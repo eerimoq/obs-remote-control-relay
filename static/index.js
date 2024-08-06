@@ -3,6 +3,7 @@ const statusConnectingToRelay = "Connecting to Relay...";
 const statusWaitingForStreamingDevice = "Waiting for the streaming device to connect...";
 const statusStreamingDeviceConnected = "Streaming device connected to OBS! Enjoy your stream!";
 const statusObsError = "OBS connection error. Aborting...";
+const statusObsAuthDisabledError = "OBS WebSocket Server authentication disabled. Aborting...";
 const statusKickedOut = "Kicked out. Aborting...";
 
 let connectionId = undefined;
@@ -75,9 +76,6 @@ function setupRelayWebsocket() {
 function setupObsWebsocket() {
     obsWebsocket = new WebSocket(`ws://localhost:${obsPort}`);
     setStatus(statusConnectingToObs);
-    obsWebsocket.onopen = (event) => {
-        setupRelayWebsocket();
-    };
     obsWebsocket.onerror = (event) => {
         setStatus(statusObsError);
     };
@@ -89,8 +87,12 @@ function setupObsWebsocket() {
     obsWebsocket.onmessage = async (event) => {
         if (relayConnected) {
             relayWebsocket.send(event.data);
-        } else {
+        } else if (JSON.parse(event.data).d.authentication != undefined) {
             helloMessage = event.data;
+            setupRelayWebsocket();
+        } else {
+            setStatus(statusObsAuthDisabledError);
+            obsWebsocket.close();
         }
     };
 }
@@ -133,6 +135,9 @@ function updateStatus() {
         help = "Configure the OBS remote control in your streaming device to use the Client URL below to make it connect to OBS.";
     } else if (status == statusObsError) {
         help = "Your browser likely does not support insecure websocket connections. Try a different browser. Chrome and Firefox usually works.";
+        statusWithIcon = `<i class="p-icon--error"></i> ${status}`;
+    } else if (status == statusObsAuthDisabledError) {
+        help = "Enable authentication in WebSocket Server settings in OBS.";
         statusWithIcon = `<i class="p-icon--error"></i> ${status}`;
     } else if (status == statusKickedOut) {
         help = "There is likely another tab with the OBS Remote Control Relay open.";
