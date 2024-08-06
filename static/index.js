@@ -146,7 +146,7 @@ function updateStatus() {
     } else if (status == statusConnectingToRelay) {
         help = "Make sure this computer has internet access. Otherwise it cannot connect to the Relay.";
     } else if (status == statusWaitingForStreamingDevice) {
-        help = "Configure the OBS remote control in your streaming device to use the Client URL below to make it connect to OBS.";
+        help = "Configure the OBS remote control in your streaming device as described in the Streaming device setup section below.";
     } else if (status == statusObsError) {
         help = "Your browser likely does not support insecure websocket connections. Try a different browser. Chrome and Firefox usually works.";
         statusWithIcon = `<i class="p-icon--error"></i> ${status}`;
