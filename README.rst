@@ -1,8 +1,19 @@
 OBS Remote Control Relay
 ========================
 
+Cloud service
+-------------
+
+A simple Go program serves a simple website and websocket endpoints.
+
+Run the Go program as a systemd service and use Nginx for TLS.
+
+.. code-block:: text
+
+   $ go build
+
 Systemd service
----------------
+^^^^^^^^^^^^^^^
 
 /etc/systemd/system/obs-remote-control-relay.service
 
@@ -38,7 +49,7 @@ Start it.
    sudo systemctl start obs-remote-control-relay
 
 Nginx
------
+^^^^^
 
 .. code-block:: text
 
@@ -50,3 +61,9 @@ Nginx
        proxy_set_header Connection "Upgrade";
        proxy_set_header Host $host;
    }
+
+Restart it.
+
+.. code-block:: text
+
+   sudo systemctl restart nginx
