@@ -49,7 +49,7 @@ function reset(delayMs) {
 
 function setupRelayWebsocket() {
     relayWebsocket = new WebSocket(
-        `wss://mys-lang.org/obs-remote-control-relay/server?connectionId=${connectionId}`);
+        `wss://mys-lang.org/obs-remote-control-relay/server/${connectionId}`);
     setStatus(statusConnectingToRelay);
     relayWebsocket.onopen = (event) => {
         setStatus(statusWaitingForStreamingDevice);
@@ -98,7 +98,7 @@ function setupObsWebsocket() {
 }
 
 function copyClientUrlToClipboard() {
-    navigator.clipboard.writeText(`wss://mys-lang.org/obs-remote-control-relay/client?connectionId=${connectionId}`);
+    navigator.clipboard.writeText(`wss://mys-lang.org/obs-remote-control-relay/client/${connectionId}`);
 }
 
 function populateObsPort() {

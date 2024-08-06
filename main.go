@@ -58,7 +58,7 @@ func serveServer(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		return
 	}
-	connectionId := r.URL.Query().Get("connectionId")
+	connectionId := r.PathValue("connectionId")
 	connection := &Connection{mutex: &sync.Mutex{}, serverWebsocket: serverWebsocket}
 	numberOfAcceptedServerWebsockets.Add(1)
 	connectionToClose, loaded := connections.LoadAndStore(connectionId, connection)
@@ -90,7 +90,7 @@ func serveServer(w http.ResponseWriter, r *http.Request) {
 }
 
 func serveClient(w http.ResponseWriter, r *http.Request) {
-	connectionId := r.URL.Query().Get("connectionId")
+	connectionId := r.PathValue("connectionId")
 	connection, ok := connections.Load(connectionId)
 	if !ok {
 		numberOfRejectedClientWebsocketsNoServer.Add(1)
@@ -159,10 +159,10 @@ func main() {
 	flag.Parse()
 	static := http.FileServer(http.Dir("./static"))
 	http.Handle("/", static)
-	http.HandleFunc("/server", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/server/{connectionId}", func(w http.ResponseWriter, r *http.Request) {
 		serveServer(w, r)
 	})
-	http.HandleFunc("/client", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/client/{connectionId}", func(w http.ResponseWriter, r *http.Request) {
 		serveClient(w, r)
 	})
 	http.HandleFunc("/stats.json", func(w http.ResponseWriter, r *http.Request) {
