@@ -15,6 +15,7 @@ let status = statusConnectingToObs;
 let helloMessage = undefined;
 let relayConnected = false;
 
+const defaultObsPort = "4455";
 const closeCodeReUsedConnectionId = 0x4001
 
 function setStatus(newStatus) {
@@ -109,9 +110,18 @@ function populateObsPort() {
     document.getElementById('obsPort').value = obsPort;
 }
 
-function setObsPort() {
+function saveObsPort() {
     obsPort = document.getElementById('obsPort').value;
     localStorage.setItem('obsPort', obsPort);
+    reset(0);
+}
+
+function resetSettings() {
+    connectionId = crypto.randomUUID();
+    localStorage.setItem('connectionId', connectionId);
+    obsPort = defaultObsPort;
+    localStorage.setItem('obsPort', obsPort);
+    populateObsPort();
     reset(0);
 }
 
@@ -170,7 +180,7 @@ function loadObsPort(urlParams) {
         obsPort = localStorage.getItem('obsPort');
     }
     if (obsPort == undefined) {
-        obsPort = "4455";
+        obsPort = defaultObsPort;
     }
     localStorage.setItem('obsPort', obsPort);
 }
