@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>OBS Remote Control Relay</title>
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
+    <link rel="stylesheet" href="vanilla-framework-version-4.14.0.min.css" />
+  </head>
+
+  <body class="is-dark" style="background:#1a1a1a">
+    <div class="row">
+      <div class="col-2"></div>
+      <div class="col-8" style="margin:auto">
+        <h1>OBS Remote Control Relay</h1>
+      </div>
+      <div class="col-2"></div>
+    </div>
+
+    <div class="row">
+      <div class="col-2"></div>
+      <div class="col-8">
+        <div class="p-card">
+          <p class="u-align-text--center">⚠️ DO NOT LEAVE THIS PAGE WHEN USING THE REMOTE CONTROL ⚠️</p>
+        </div>
+      </div>
+      <div class="col-2"></div>
+    </div>
+
+    <div class="row">
+      <div class="col-2"></div>
+      <div class="col-8">
+        <div class="p-card">
+          <h2>About</h2>
+          <p>
+            The OBS Remote Control Relay aims to eliminate the need
+            for port forwarding, public IP address, and VPN when using
+            the OBS remote control to control OBS on your computer at
+            home.
+          </p>
+        </div>
+      </div>
+      <div class="col-2"></div>
+    </div>
+
+    <div class="row">
+      <div class="col-2"></div>
+      <div class="col-8">
+        <div class="p-card">
+          <h2>Status</h2>
+          <p id="status"></p>
+          <div id="help"></div>
+        </div>
+      </div>
+      <div class="col-2"></div>
+    </div>
+
+    <div class="row">
+      <div class="col-2"></div>
+      <div class="col-8">
+        <div class="p-card">
+          <h2>Client URL</h2>
+          <p>
+            Configure the OBS remote control in your streaming device
+            to use this URL.
+          </p>
+          <button onclick="copyClientUrlToClipboard()">
+            <i class="p-icon--copy"></i> Copy to clipboard
+          </button>
+          <div class="p-notification--caution is-inline">
+            <div class="p-notification__content">
+              <p class="p-notification__message">
+                Handle your Client URL the same as a password: never share it and don't show it on your stream.
+              </p>
+            </div>
+          </div>
+
+        </div>
+      </div>
+      <div class="col-2"></div>
+    </div>
+
+    <div class="row">
+      <div class="col-2"></div>
+      <div class="col-8">
+        <div class="p-card">
+          <h2>Settings</h2>
+          <p>OBS WebSocket Server port</p>
+          <input id="obsPort" type="text" name="obsPort" >
+          <button onclick="setObsPort()" >Save</button>
+        </div>
+      </div>
+      <div class="col-2"></div>
+    </div>
+
+    <script src="index.js"></script>
+  </body>
+</html>
