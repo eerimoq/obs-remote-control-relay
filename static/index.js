@@ -97,8 +97,12 @@ function setupObsWebsocket() {
     };
 }
 
-function copyClientUrlToClipboard() {
+function copyMoblinClientUrlToClipboard() {
     navigator.clipboard.writeText(`wss://mys-lang.org/obs-remote-control-relay/client/${connectionId}`);
+}
+
+function copyObsBladeHostnameClientUrlToClipboard() {
+    navigator.clipboard.writeText(`mys-lang.org/obs-remote-control-relay/client/${connectionId}`);
 }
 
 function populateObsPort() {
