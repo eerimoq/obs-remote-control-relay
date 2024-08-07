@@ -9,152 +9,190 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/puzpuzpuz/xsync/v3"
 	"nhooyr.io/websocket"
 )
 
 type Connection struct {
-	mutex           *sync.Mutex
-	clientWebsocket *websocket.Conn
-	serverWebsocket *websocket.Conn
-	// Save the hello message from the server until the client connects
-	helloMessageType websocket.MessageType
-	helloMessage     []byte
+	mutex               *sync.Mutex
+	clientWebsocket     *websocket.Conn
+	serverDataWebsocket *websocket.Conn
 }
 
-func (c *Connection) close(kicked bool) {
+func (c *Connection) close() {
 	c.mutex.Lock()
 	if c.clientWebsocket != nil {
 		c.clientWebsocket.Close(websocket.StatusGoingAway, "Closing")
 		c.clientWebsocket = nil
 	}
-	if c.serverWebsocket != nil {
-		if kicked {
-			c.serverWebsocket.Close(3000, "Kicked out by other connection")
-		} else {
-			c.serverWebsocket.Close(websocket.StatusGoingAway, "Closing")
-		}
-		c.serverWebsocket = nil
+	if c.serverDataWebsocket != nil {
+		c.serverDataWebsocket.Close(websocket.StatusGoingAway, "Closing")
+		c.serverDataWebsocket = nil
 	}
 	c.mutex.Unlock()
 }
 
+type Server struct {
+	mutex                  *sync.Mutex
+	serverControlWebsocket *websocket.Conn
+	conections             map[string]*Connection
+}
+
+func (c *Server) close(kicked bool) {
+	c.mutex.Lock()
+	if c.serverControlWebsocket != nil {
+		if kicked {
+			c.serverControlWebsocket.Close(3000, "Kicked out by other connection")
+		} else {
+			c.serverControlWebsocket.Close(websocket.StatusGoingAway, "Closing")
+		}
+		c.serverControlWebsocket = nil
+	}
+	for _, connection := range c.conections {
+		connection.close()
+	}
+	c.conections = make(map[string]*Connection)
+	c.mutex.Unlock()
+}
+
 var address = flag.String("address", ":8080", "HTTP server address")
-var connections = xsync.NewMapOf[string, *Connection]()
-var numberOfAcceptedServerWebsockets = xsync.NewCounter()
-var numberOfKickedServerWebsockets = xsync.NewCounter()
-var numberOfAcceptedClientWebsockets = xsync.NewCounter()
-var numberOfRejectedClientWebsocketsNoServer = xsync.NewCounter()
-var numberOfRejectedClientWebsocketsAlreadyInUse = xsync.NewCounter()
-var numberOfServerToClientBytes = xsync.NewCounter()
-var numberOfClientToServerBytes = xsync.NewCounter()
+var servers = xsync.NewMapOf[string, *Server]()
+var acceptedServerControlWebsockets = xsync.NewCounter()
+var acceptedServerDataWebsockets = xsync.NewCounter()
+var kickedServerWebsockets = xsync.NewCounter()
+var acceptedClientWebsockets = xsync.NewCounter()
+var rejectedClientWebsocketsNoServer = xsync.NewCounter()
+var serverToClientBytes = xsync.NewCounter()
+var clientToServerBytes = xsync.NewCounter()
 var serverToClientBitrate atomic.Int64
 var clientToServerBitrate atomic.Int64
 
-func serveServer(w http.ResponseWriter, r *http.Request) {
+func serveServerControl(w http.ResponseWriter, r *http.Request) {
 	context := r.Context()
-	serverWebsocket, err := websocket.Accept(w, r, nil)
+	serverControlWebsocket, err := websocket.Accept(w, r, nil)
 	if err != nil {
 		return
 	}
-	serverWebsocket.SetReadLimit(-1)
-	connectionId := r.PathValue("connectionId")
-	connection := &Connection{mutex: &sync.Mutex{}, serverWebsocket: serverWebsocket}
-	numberOfAcceptedServerWebsockets.Add(1)
-	connectionToClose, loaded := connections.LoadAndStore(connectionId, connection)
+	serverId := r.PathValue("serverId")
+	server := &Server{mutex: &sync.Mutex{}, serverControlWebsocket: serverControlWebsocket, conections: make(map[string]*Connection)}
+	acceptedServerControlWebsockets.Add(1)
+	serverToClose, loaded := servers.LoadAndStore(serverId, server)
 	if loaded {
-		numberOfKickedServerWebsockets.Add(1)
-		connectionToClose.close(true)
+		kickedServerWebsockets.Add(1)
+		serverToClose.close(true)
 	}
+	_, _, _ = serverControlWebsocket.Read(context)
+	servers.Compute(
+		serverId,
+		func(oldValue *Server, loaded bool) (*Server, bool) {
+			return oldValue, oldValue == server
+		})
+	server.close(false)
+}
+
+func serveServerData(w http.ResponseWriter, r *http.Request) {
+	context := r.Context()
+	serverDataWebsocket, err := websocket.Accept(w, r, nil)
+	if err != nil {
+		return
+	}
+	serverDataWebsocket.SetReadLimit(-1)
+	serverId := r.PathValue("serverId")
+	connectionId := r.PathValue("connectionId")
+	acceptedServerDataWebsockets.Add(1)
+	server, ok := servers.Load(serverId)
+	if !ok {
+		return
+	}
+	server.mutex.Lock()
+	connection := server.conections[connectionId]
+	if connection == nil {
+		server.mutex.Unlock()
+		return
+	}
+	connection.serverDataWebsocket = serverDataWebsocket
+	server.mutex.Unlock()
 	for {
-		messageType, message, err := serverWebsocket.Read(context)
+		messageType, message, err := serverDataWebsocket.Read(context)
 		if err != nil {
 			break
 		}
-		numberOfServerToClientBytes.Add(int64(len(message)))
+		serverToClientBytes.Add(int64(len(message)))
 		connection.mutex.Lock()
 		if connection.clientWebsocket != nil {
 			connection.clientWebsocket.Write(context, messageType, message)
-		} else {
-			connection.helloMessageType = messageType
-			connection.helloMessage = message
 		}
 		connection.mutex.Unlock()
 	}
-	connections.Compute(
-		connectionId,
-		func(oldValue *Connection, loaded bool) (*Connection, bool) {
-			return oldValue, oldValue == connection
-		})
-	connection.close(false)
+	server.mutex.Lock()
+	delete(server.conections, connectionId)
+	server.mutex.Unlock()
+	connection.close()
 }
 
 func serveClient(w http.ResponseWriter, r *http.Request) {
 	context := r.Context()
-	connectionId := r.PathValue("connectionId")
-	connection, ok := connections.Load(connectionId)
+	serverId := r.PathValue("serverId")
+	server, ok := servers.Load(serverId)
 	if !ok {
-		numberOfRejectedClientWebsocketsNoServer.Add(1)
+		rejectedClientWebsocketsNoServer.Add(1)
 		return
 	}
-	connection.mutex.Lock()
-	if connection.clientWebsocket != nil {
-		connection.mutex.Unlock()
-		numberOfRejectedClientWebsocketsAlreadyInUse.Add(1)
-		return
-	}
-	connection.mutex.Unlock()
 	clientWebsocket, err := websocket.Accept(w, r, nil)
 	if err != nil {
 		return
 	}
 	clientWebsocket.SetReadLimit(-1)
-	numberOfAcceptedClientWebsockets.Add(1)
-	connection.mutex.Lock()
-	if connection.serverWebsocket == nil || connection.clientWebsocket != nil {
-		connection.mutex.Unlock()
-		clientWebsocket.Close(websocket.StatusGoingAway, "No server or already in use")
-		return
-	}
-	connection.clientWebsocket = clientWebsocket
-	serverWebsocket := connection.serverWebsocket
-	if len(connection.helloMessage) != 0 {
-		clientWebsocket.Write(context, connection.helloMessageType, connection.helloMessage)
-	}
-	connection.mutex.Unlock()
+	acceptedClientWebsockets.Add(1)
+	connectionId := uuid.New().String()
+	connection := &Connection{mutex: &sync.Mutex{}, clientWebsocket: clientWebsocket}
+	server.mutex.Lock()
+	server.conections[connectionId] = connection
+	server.serverControlWebsocket.Write(context, websocket.MessageText, []byte(connectionId))
+	server.mutex.Unlock()
 	for {
 		messageType, message, err := clientWebsocket.Read(context)
 		if err != nil {
 			break
 		}
-		numberOfClientToServerBytes.Add(int64(len(message)))
-		serverWebsocket.Write(context, messageType, message)
+		clientToServerBytes.Add(int64(len(message)))
+		connection.mutex.Lock()
+		if connection.serverDataWebsocket == nil {
+			connection.mutex.Unlock()
+			break
+		}
+		connection.serverDataWebsocket.Write(context, messageType, message)
+		connection.mutex.Unlock()
 	}
-	connection.close(false)
+	server.mutex.Lock()
+	delete(server.conections, connectionId)
+	server.mutex.Unlock()
+	connection.close()
 }
 
 func serveStatsJson(w http.ResponseWriter, _ *http.Request) {
 	statsJson := fmt.Sprintf(
 		`{
-	"currentNumberOfServerWebsockets": %v,
-	"numberOfAcceptedServerWebsockets": %v,
-	"numberOfKickedServerWebsockets": %v,
-	"numberOfAcceptedClientWebsockets": %v,
-	"numberOfRejectedClientWebsocketsNoServer": %v,
-	"numberOfRejectedClientWebsocketsAlreadyInUse": %v,
-	"numberOfServerToClientBytes": %v,
-	"numberOfClientToServerBytes": %v,
+	"serverControlWebsockets": %v,
+	"acceptedServerControlWebsockets": %v,
+	"acceptedServerDataWebsockets": %v,
+	"kickedServerWebsockets": %v,
+	"acceptedClientWebsockets": %v,
+	"rejectedClientWebsocketsNoServer": %v,
+	"serverToClientBytes": %v,
+	"clientToServerBytes": %v,
 	"serverToClientBitrate": %v,
 	"clientToServerBitrate": %v
 }`,
-		connections.Size(),
-		numberOfAcceptedServerWebsockets.Value(),
-		numberOfKickedServerWebsockets.Value(),
-		numberOfAcceptedClientWebsockets.Value(),
-		numberOfRejectedClientWebsocketsNoServer.Value(),
-		numberOfRejectedClientWebsocketsAlreadyInUse.Value(),
-		numberOfServerToClientBytes.Value(),
-		numberOfClientToServerBytes.Value(),
+		servers.Size(),
+		acceptedServerControlWebsockets.Value(),
+		acceptedServerDataWebsockets.Value(),
+		kickedServerWebsockets.Value(),
+		acceptedClientWebsockets.Value(),
+		rejectedClientWebsocketsNoServer.Value(),
+		serverToClientBytes.Value(),
+		clientToServerBytes.Value(),
 		serverToClientBitrate.Load(),
 		clientToServerBitrate.Load())
 	w.Header().Add("content-type", "application/json")
@@ -162,15 +200,15 @@ func serveStatsJson(w http.ResponseWriter, _ *http.Request) {
 }
 
 func updateStats() {
-	var prevNumberOfServerToClientBytes int64
-	var prevNumberOfClientToServerBytes int64
+	var prevServerToClientBytes int64
+	var prevClientToServerBytes int64
 	for {
-		newNumberOfServerToClientBytes := numberOfServerToClientBytes.Value()
-		serverToClientBitrate.Store(newNumberOfServerToClientBytes - prevNumberOfServerToClientBytes)
-		prevNumberOfServerToClientBytes = newNumberOfServerToClientBytes
-		newNumberOfClientToServerBytes := numberOfClientToServerBytes.Value()
-		clientToServerBitrate.Store(newNumberOfClientToServerBytes - prevNumberOfClientToServerBytes)
-		prevNumberOfClientToServerBytes = newNumberOfClientToServerBytes
+		newServerToClientBytes := serverToClientBytes.Value()
+		serverToClientBitrate.Store(newServerToClientBytes - prevServerToClientBytes)
+		prevServerToClientBytes = newServerToClientBytes
+		newClientToServerBytes := clientToServerBytes.Value()
+		clientToServerBitrate.Store(newClientToServerBytes - prevClientToServerBytes)
+		prevClientToServerBytes = newClientToServerBytes
 		time.Sleep(1 * time.Second)
 	}
 }
@@ -180,10 +218,13 @@ func main() {
 	go updateStats()
 	static := http.FileServer(http.Dir("./static"))
 	http.Handle("/", static)
-	http.HandleFunc("/server/{connectionId}", func(w http.ResponseWriter, r *http.Request) {
-		serveServer(w, r)
+	http.HandleFunc("/server/control/{serverId}", func(w http.ResponseWriter, r *http.Request) {
+		serveServerControl(w, r)
 	})
-	http.HandleFunc("/client/{connectionId}", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/server/data/{serverId}/{connectionId}", func(w http.ResponseWriter, r *http.Request) {
+		serveServerData(w, r)
+	})
+	http.HandleFunc("/client/{serverId}", func(w http.ResponseWriter, r *http.Request) {
 		serveClient(w, r)
 	})
 	http.HandleFunc("/stats.json", func(w http.ResponseWriter, r *http.Request) {

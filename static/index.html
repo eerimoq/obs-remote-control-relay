@@ -48,8 +48,29 @@
       <div class="col-8">
         <div class="p-card">
           <h2>Status</h2>
-          <p id="status"></p>
-          <p id="statusTimeAgo"></p>
+          <p id="relayStatus"></p>
+          <p id="relayStatusTimeAgo"></p>
+        </div>
+      </div>
+      <div class="col-2"></div>
+    </div>
+
+    <div class="row">
+      <div class="col-2"></div>
+      <div class="col-8">
+        <div class="p-card">
+          <h2>Connections</h2>
+          <div>
+            <table id="connections" style="table-layout:auto">
+              <thead>
+                <tr>
+                  <th>Status</th>
+                  <th>Status age</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
           <div id="help"></div>
         </div>
       </div>
