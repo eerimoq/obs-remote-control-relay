@@ -57,6 +57,8 @@ location /obs-remote-control-relay/ {
     proxy_set_header Upgrade $http_upgrade;
     proxy_set_header Connection "Upgrade";
     proxy_set_header Host $host;
+    proxy_send_timeout 7d;
+    proxy_read_timeout 7d;
 }
 ```
 
