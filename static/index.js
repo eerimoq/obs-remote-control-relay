@@ -1,6 +1,5 @@
-const relayStatusConnecting = "Connecting to Relay...";
-const relayStatusConnected = "Connected to Relay";
-const relayStatusKickedOut = "Kicked out. Aborting...";
+const relayStatusConnecting = "Connecting...";
+const relayStatusConnected = "Connected";
 
 const connectionStatusConnectingToRelay = "Connecting to Relay...";
 const connectionStatusConnectingToObs = "Connecting to OBS on this computer...";
@@ -11,7 +10,6 @@ const connectionStatusRelayClosed = "Relay connection closed";
 const connectionStatusRelayError = "Relay connection error";
 
 const defaultObsPort = "4455";
-const closeCodeReUsedConnectionId = 3000
 
 let serverId = undefined;
 let obsPort = undefined;
