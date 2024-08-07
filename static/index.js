@@ -43,7 +43,7 @@ class Connection {
             return;
         }
         if (this.isAborted()) {
-            return
+            return;
         }
         this.status = newStatus;
         this.statusUpdateTime = new Date();
@@ -54,7 +54,7 @@ class Connection {
         return ((this.status == connectionStatusRelayClosed)
                 || (this.status == connectionStatusRelayError)
                 || (this.status == connectionStatusObsClosed)
-                || (this.status == connectionStatusObsError))
+                || (this.status == connectionStatusObsError));
     }
 
     setupRelayDataWebsocket() {
@@ -124,7 +124,7 @@ class Connection {
 let connections = [];
 
 function numberSuffix(value) {
-    return (value == 1 ? "" : "s")
+    return (value == 1 ? "" : "s");
 }
 
 function timeAgoString(fromDate) {
