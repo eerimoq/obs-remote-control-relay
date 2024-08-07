@@ -234,7 +234,7 @@ function appendToRow(row, value) {
 
 function updateConnections() {
     let body = getTableBody('connections');
-    for (const [_, connection] of Object.entries(connections)) {
+    for (const connection of connections) {
         let row = body.insertRow(-1);
         let statusWithIcon = `<i class="p-icon--spinner u-animation--spin"></i> ${connection.status}`;
         if (connection.status == connectionStatusConnected) {
