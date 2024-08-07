@@ -66,21 +66,13 @@ class Connection {
         };
         this.relayDataWebsocket.onclose = (event) => {
             this.setStatus(connectionStatusRelayClosed);
-            if (this.obsWebsocket != undefined) {
-                this.obsWebsocket.close();
-                this.obsWebsocket = undefined;
-                this.relayDataWebsocket = undefined;
-                this.connectionId = undefined;
-            }
+            this.relayDataWebsocket = undefined;
+            this.close();
         };
         this.relayDataWebsocket.onclose = (event) => {
             this.setStatus(connectionStatusRelayError);
-            if (this.obsWebsocket != undefined) {
-                this.obsWebsocket.close();
-                this.obsWebsocket = undefined;
-                this.relayDataWebsocket = undefined;
-                this.connectionId = undefined;
-            }
+            this.relayDataWebsocket = undefined;
+            this.close();
         };
         this.relayDataWebsocket.onmessage = async (event) => {
             if (this.obsWebsocket != undefined) {
@@ -97,21 +89,13 @@ class Connection {
         };
         this.obsWebsocket.onerror = (event) => {
             this.setStatus(connectionStatusObsError);
-            if (this.relayDataWebsocket != undefined) {
-                this.relayDataWebsocket.close()
-                this.obsWebsocket = undefined;
-                this.relayDataWebsocket = undefined;
-                this.connectionId = undefined;
-            }
+            this.obsWebsocket = undefined;
+            this.close();
         };
         this.obsWebsocket.onclose = (event) => {
             this.setStatus(connectionStatusObsClosed);
-            if (this.relayDataWebsocket != undefined) {
-                this.relayDataWebsocket.close()
-                this.obsWebsocket = undefined;
-                this.relayDataWebsocket = undefined;
-                this.connectionId = undefined;
-            }
+            this.obsWebsocket = undefined;
+            this.close();
         };
         this.obsWebsocket.onmessage = async (event) => {
             if (this.relayDataWebsocket != undefined) {
@@ -177,6 +161,9 @@ function setupRelayControlWebsocket() {
     setRelayStatus(relayStatusConnecting);
     relayControlWebsocket.onopen = (event) => {
         setRelayStatus(relayStatusConnected);
+    };
+    relayControlWebsocket.onerror = (event) => {
+        reset(10000);
     };
     relayControlWebsocket.onclose = (event) => {
         reset(10000);
@@ -244,19 +231,6 @@ function updateConnections() {
         }
         appendToRow(row, statusWithIcon);
         appendToRow(row, timeAgoString(connection.statusUpdateTime));
-    }
-}
-
-function formatHelp(help, kind) {
-    if (help != "") {
-        return ('<div class="p-notification--information">' +
-                '  <div class="p-notification__content">' +
-                '    <h5 class="p-notification__title">Next step</h5>' +
-                `    <p class="p-notification__message">${help}</p>` +
-                '  </div>' +
-                '</div>');
-    } else {
-        return "";
     }
 }
 
