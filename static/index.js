@@ -12,11 +12,32 @@ let relayWebsocket = undefined;
 let obsWebsocket = undefined;
 let timerId = undefined;
 let status = statusConnectingToObs;
+let statusUpdateTime = new Date();
 let helloMessage = undefined;
 let relayConnected = false;
 
 const defaultObsPort = "4455";
 const closeCodeReUsedConnectionId = 3000
+
+function numberSuffix(value) {
+    return (value == 1 ? "" : "s")
+}
+
+function timeAgoString(fromDate) {
+    let now = new Date();
+    let secondsAgo = parseInt((now.getTime() - fromDate.getTime()) / 1000);
+    if (secondsAgo < 60) {
+        return `${secondsAgo} second${numberSuffix(secondsAgo)} ago`;
+    } else if (secondsAgo < 3600) {
+        let minutesAgo = parseInt(secondsAgo / 60);
+        return `${minutesAgo} minute${numberSuffix(minutesAgo)} ago`;
+    } else if (secondsAgo < 86400) {
+        let hoursAgo = parseInt(secondsAgo / 3600);
+        return `${hoursAgo} hour${numberSuffix(hoursAgo)} ago`;
+    } else {
+        return fromDate.toDateString();
+    }
+}
 
 function setStatus(newStatus) {
     if (status == newStatus) {
@@ -24,6 +45,7 @@ function setStatus(newStatus) {
     }
     // console.log(`State change ${status} -> ${newStatus}`)
     status = newStatus;
+    statusUpdateTime = new Date();
     updateStatus();
 }
 
@@ -161,6 +183,11 @@ function updateStatus() {
     }
     document.getElementById('status').innerHTML = statusWithIcon;
     document.getElementById('help').innerHTML = formatHelp(help);
+    updateStatusTimeAgo();
+}
+
+function updateStatusTimeAgo() {
+    document.getElementById('statusTimeAgo').innerHTML = `Status changed ${timeAgoString(statusUpdateTime)}.`;
 }
 
 function loadConnectionId(urlParams) {
@@ -192,4 +219,7 @@ window.addEventListener('DOMContentLoaded', async (event) => {
     setupObsWebsocket();
     populateObsPort();
     updateStatus();
+    setInterval(() => {
+        updateStatusTimeAgo();
+    }, 1000);
 });
