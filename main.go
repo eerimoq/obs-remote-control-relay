@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -46,11 +47,13 @@ var address = flag.String("address", ":8080", "HTTP server address")
 var connections = xsync.NewMapOf[string, *Connection]()
 var numberOfAcceptedServerWebsockets = xsync.NewCounter()
 var numberOfKickedServerWebsockets = xsync.NewCounter()
-var numberOfServerToClientMessages = xsync.NewCounter()
 var numberOfAcceptedClientWebsockets = xsync.NewCounter()
 var numberOfRejectedClientWebsocketsNoServer = xsync.NewCounter()
 var numberOfRejectedClientWebsocketsAlreadyInUse = xsync.NewCounter()
-var numberOfClientToServerMessages = xsync.NewCounter()
+var numberOfServerToClientBytes = xsync.NewCounter()
+var numberOfClientToServerBytes = xsync.NewCounter()
+var serverToClientBitrate atomic.Int64
+var clientToServerBitrate atomic.Int64
 var kickData = append([]byte{0x40, 0x01}, []byte("Kicked out by other connection")...)
 
 func serveServer(w http.ResponseWriter, r *http.Request) {
@@ -71,7 +74,7 @@ func serveServer(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			break
 		}
-		numberOfServerToClientMessages.Inc()
+		numberOfServerToClientBytes.Add(int64(len(message)))
 		connection.mutex.Lock()
 		if connection.clientWebsocket != nil {
 			connection.clientWebsocket.WriteMessage(messageType, message)
@@ -125,7 +128,7 @@ func serveClient(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			break
 		}
-		numberOfClientToServerMessages.Inc()
+		numberOfClientToServerBytes.Add(int64(len(message)))
 		serverWebsocket.WriteMessage(messageType, message)
 	}
 	connection.close(false)
@@ -140,8 +143,10 @@ func serveStatsJson(w http.ResponseWriter, _ *http.Request) {
 	"numberOfAcceptedClientWebsockets": %v,
 	"numberOfRejectedClientWebsocketsNoServer": %v,
 	"numberOfRejectedClientWebsocketsAlreadyInUse": %v,
-	"numberOfServerToClientMessages": %v,
-	"numberOfClientToServerMessages": %v
+	"numberOfServerToClientBytes": %v,
+	"numberOfClientToServerBytes": %v,
+	"serverToClientBitrate": %v,
+	"clientToServerBitrate": %v
 }`,
 		connections.Size(),
 		numberOfAcceptedServerWebsockets.Value(),
@@ -149,14 +154,31 @@ func serveStatsJson(w http.ResponseWriter, _ *http.Request) {
 		numberOfAcceptedClientWebsockets.Value(),
 		numberOfRejectedClientWebsocketsNoServer.Value(),
 		numberOfRejectedClientWebsocketsAlreadyInUse.Value(),
-		numberOfServerToClientMessages.Value(),
-		numberOfClientToServerMessages.Value())
+		numberOfServerToClientBytes.Value(),
+		numberOfClientToServerBytes.Value(),
+		serverToClientBitrate.Load(),
+		clientToServerBitrate.Load())
 	w.Header().Add("content-type", "application/json")
 	w.Write([]byte(statsJson))
 }
 
+func updateStats() {
+	var prevNumberOfServerToClientBytes int64
+	var prevNumberOfClientToServerBytes int64
+	for {
+		newNumberOfServerToClientBytes := numberOfServerToClientBytes.Value()
+		serverToClientBitrate.Store(newNumberOfServerToClientBytes - prevNumberOfServerToClientBytes)
+		prevNumberOfServerToClientBytes = newNumberOfServerToClientBytes
+		newNumberOfClientToServerBytes := numberOfClientToServerBytes.Value()
+		clientToServerBitrate.Store(newNumberOfClientToServerBytes - prevNumberOfClientToServerBytes)
+		prevNumberOfClientToServerBytes = newNumberOfClientToServerBytes
+		time.Sleep(1 * time.Second)
+	}
+}
+
 func main() {
 	flag.Parse()
+	go updateStats()
 	static := http.FileServer(http.Dir("./static"))
 	http.Handle("/", static)
 	http.HandleFunc("/server/{connectionId}", func(w http.ResponseWriter, r *http.Request) {
