@@ -9,35 +9,31 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/gorilla/websocket"
 	"github.com/puzpuzpuz/xsync/v3"
+	"nhooyr.io/websocket"
 )
-
-var upgrader = websocket.Upgrader{
-	ReadBufferSize:  1024,
-	WriteBufferSize: 1024,
-}
 
 type Connection struct {
 	mutex           *sync.Mutex
 	clientWebsocket *websocket.Conn
 	serverWebsocket *websocket.Conn
 	// Save the hello message from the server until the client connects
-	helloMessageType int
+	helloMessageType websocket.MessageType
 	helloMessage     []byte
 }
 
 func (c *Connection) close(kicked bool) {
 	c.mutex.Lock()
 	if c.clientWebsocket != nil {
-		c.clientWebsocket.Close()
+		c.clientWebsocket.Close(websocket.StatusGoingAway, "Closing")
 		c.clientWebsocket = nil
 	}
 	if c.serverWebsocket != nil {
 		if kicked {
-			c.serverWebsocket.WriteControl(websocket.CloseMessage, kickData, time.Now().Add(5*time.Second))
+			c.serverWebsocket.Close(3000, "Kicked out by other connection")
+		} else {
+			c.serverWebsocket.Close(websocket.StatusGoingAway, "Closing")
 		}
-		c.serverWebsocket.Close()
 		c.serverWebsocket = nil
 	}
 	c.mutex.Unlock()
@@ -54,13 +50,14 @@ var numberOfServerToClientBytes = xsync.NewCounter()
 var numberOfClientToServerBytes = xsync.NewCounter()
 var serverToClientBitrate atomic.Int64
 var clientToServerBitrate atomic.Int64
-var kickData = append([]byte{0x40, 0x01}, []byte("Kicked out by other connection")...)
 
 func serveServer(w http.ResponseWriter, r *http.Request) {
-	serverWebsocket, err := upgrader.Upgrade(w, r, nil)
+	context := r.Context()
+	serverWebsocket, err := websocket.Accept(w, r, nil)
 	if err != nil {
 		return
 	}
+	serverWebsocket.SetReadLimit(-1)
 	connectionId := r.PathValue("connectionId")
 	connection := &Connection{mutex: &sync.Mutex{}, serverWebsocket: serverWebsocket}
 	numberOfAcceptedServerWebsockets.Add(1)
@@ -70,14 +67,14 @@ func serveServer(w http.ResponseWriter, r *http.Request) {
 		connectionToClose.close(true)
 	}
 	for {
-		messageType, message, err := serverWebsocket.ReadMessage()
+		messageType, message, err := serverWebsocket.Read(context)
 		if err != nil {
 			break
 		}
 		numberOfServerToClientBytes.Add(int64(len(message)))
 		connection.mutex.Lock()
 		if connection.clientWebsocket != nil {
-			connection.clientWebsocket.WriteMessage(messageType, message)
+			connection.clientWebsocket.Write(context, messageType, message)
 		} else {
 			connection.helloMessageType = messageType
 			connection.helloMessage = message
@@ -93,6 +90,7 @@ func serveServer(w http.ResponseWriter, r *http.Request) {
 }
 
 func serveClient(w http.ResponseWriter, r *http.Request) {
+	context := r.Context()
 	connectionId := r.PathValue("connectionId")
 	connection, ok := connections.Load(connectionId)
 	if !ok {
@@ -106,30 +104,31 @@ func serveClient(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	connection.mutex.Unlock()
-	clientWebsocket, err := upgrader.Upgrade(w, r, nil)
+	clientWebsocket, err := websocket.Accept(w, r, nil)
 	if err != nil {
 		return
 	}
+	clientWebsocket.SetReadLimit(-1)
 	numberOfAcceptedClientWebsockets.Add(1)
 	connection.mutex.Lock()
 	if connection.serverWebsocket == nil || connection.clientWebsocket != nil {
 		connection.mutex.Unlock()
-		clientWebsocket.Close()
+		clientWebsocket.Close(websocket.StatusGoingAway, "No server or already in use")
 		return
 	}
 	connection.clientWebsocket = clientWebsocket
 	serverWebsocket := connection.serverWebsocket
 	if len(connection.helloMessage) != 0 {
-		clientWebsocket.WriteMessage(connection.helloMessageType, connection.helloMessage)
+		clientWebsocket.Write(context, connection.helloMessageType, connection.helloMessage)
 	}
 	connection.mutex.Unlock()
 	for {
-		messageType, message, err := clientWebsocket.ReadMessage()
+		messageType, message, err := clientWebsocket.Read(context)
 		if err != nil {
 			break
 		}
 		numberOfClientToServerBytes.Add(int64(len(message)))
-		serverWebsocket.WriteMessage(messageType, message)
+		serverWebsocket.Write(context, messageType, message)
 	}
 	connection.close(false)
 }

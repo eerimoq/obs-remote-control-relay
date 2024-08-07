@@ -16,7 +16,7 @@ let helloMessage = undefined;
 let relayConnected = false;
 
 const defaultObsPort = "4455";
-const closeCodeReUsedConnectionId = 0x4001
+const closeCodeReUsedConnectionId = 3000
 
 function setStatus(newStatus) {
     if (status == newStatus) {
