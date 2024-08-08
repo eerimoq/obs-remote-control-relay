@@ -7,8 +7,8 @@ const connectionStatusConnectingToObs = "Connecting to OBS on this computer...";
 const connectionStatusObsClosed = "OBS connection closed";
 const connectionStatusObsError = "OBS connection error";
 const connectionStatusConnected = "Connected";
-const connectionStatusRelayClosed = "Remote controller connection closed";
-const connectionStatusRelayError = "Remote controller connection error";
+const connectionStatusRemoteControllerClosed = "Remote controller connection closed";
+const connectionStatusRemoteControllerError = "Remote controller connection error";
 
 const defaultObsPort = "4455";
 const kickedCode = 3000;
@@ -25,11 +25,11 @@ class Connection {
         this.obsWebsocket = undefined;
         this.status = connectionStatusConnectingToRelay;
         this.statusUpdateTime = new Date();
-        this.bridgeToDeviceBytes = 0
+        this.bridgeToRemoteControllerBytes = 0
         this.bridgeToObsBytes = 0
-        this.bitrateToDevice = 0
+        this.bitrateToRemoteController = 0
         this.bitrateToObs = 0
-        this.prevBitrateToDeviceBytes = 0
+        this.prevBitrateToRemoteControllerBytes = 0
         this.prevBitrateToObsBytes = 0
     }
 
@@ -55,8 +55,8 @@ class Connection {
     }
 
     isAborted() {
-        return ((this.status == connectionStatusRelayClosed)
-                || (this.status == connectionStatusRelayError)
+        return ((this.status == connectionStatusRemoteControllerClosed)
+                || (this.status == connectionStatusRemoteControllerError)
                 || (this.status == connectionStatusObsClosed)
                 || (this.status == connectionStatusObsError));
     }
@@ -69,11 +69,11 @@ class Connection {
             this.setupObsWebsocket();
         };
         this.relayDataWebsocket.onerror = (event) => {
-            this.setStatus(connectionStatusRelayError);
+            this.setStatus(connectionStatusRemoteControllerError);
             this.close();
         };
         this.relayDataWebsocket.onclose = (event) => {
-            this.setStatus(connectionStatusRelayError);
+            this.setStatus(connectionStatusRemoteControllerError);
             this.close();
         };
         this.relayDataWebsocket.onmessage = async (event) => {
@@ -100,15 +100,15 @@ class Connection {
         };
         this.obsWebsocket.onmessage = async (event) => {
             if (this.relayDataWebsocket.readyState == WebSocket.OPEN) {
-                this.bridgeToDeviceBytes += textEncoder.encode(event.data).length;
+                this.bridgeToRemoteControllerBytes += textEncoder.encode(event.data).length;
                 this.relayDataWebsocket.send(event.data);
             }
         };
     }
 
     updateBitrates() {
-        this.bitrateToDevice = 8 * (this.bridgeToDeviceBytes - this.prevBitrateToDeviceBytes)
-        this.prevBitrateToDeviceBytes = this.bridgeToDeviceBytes
+        this.bitrateToRemoteController = 8 * (this.bridgeToRemoteControllerBytes - this.prevBitrateToRemoteControllerBytes)
+        this.prevBitrateToRemoteControllerBytes = this.bridgeToRemoteControllerBytes
         this.bitrateToObs = 8 * (this.bridgeToObsBytes - this.prevBitrateToObsBytes)
         this.prevBitrateToObsBytes = this.bridgeToObsBytes
     }
@@ -217,12 +217,12 @@ function reset(delayMs) {
     }, delayMs);
 }
 
-function copyMoblinClientUrlToClipboard() {
-    navigator.clipboard.writeText(`wss://mys-lang.org/obs-remote-control-relay/client/${bridgeId}`);
+function copyMoblinRemoteControllerUrlToClipboard() {
+    navigator.clipboard.writeText(`wss://mys-lang.org/obs-remote-control-relay/remote-controller/${bridgeId}`);
 }
 
-function copyObsBladeHostnameClientUrlToClipboard() {
-    navigator.clipboard.writeText(`mys-lang.org/obs-remote-control-relay/client/${bridgeId}`);
+function copyObsBladeHostnameRemoteControllerUrlToClipboard() {
+    navigator.clipboard.writeText(`mys-lang.org/obs-remote-control-relay/remote-controller/${bridgeId}`);
 }
 
 function populateObsPort() {
@@ -269,7 +269,7 @@ function updateConnections() {
         }
         appendToRow(row, statusWithIcon);
         appendToRow(row, timeAgoString(connection.statusUpdateTime));
-        appendToRow(row, bitrateToString(connection.bitrateToDevice));
+        appendToRow(row, bitrateToString(connection.bitrateToRemoteController));
         appendToRow(row, bitrateToString(connection.bitrateToObs));
     }
 }
