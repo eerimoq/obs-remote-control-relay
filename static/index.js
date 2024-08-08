@@ -1,22 +1,22 @@
 const relayStatusConnecting = "Connecting...";
 const relayStatusConnected = "Connected";
+const relayStatusKicked = "Kicked";
 
 const connectionStatusConnectingToRelay = "Connecting to Relay...";
 const connectionStatusConnectingToObs = "Connecting to OBS on this computer...";
 const connectionStatusObsClosed = "OBS connection closed";
 const connectionStatusObsError = "OBS connection error";
 const connectionStatusConnected = "Connected";
-const connectionStatusRelayClosed = "Relay connection closed";
-const connectionStatusRelayError = "Relay connection error";
+const connectionStatusRelayClosed = "Device connection closed";
+const connectionStatusRelayError = "Device connection error";
 
 const defaultObsPort = "4455";
+const kickedCode = 3000;
 
-let serverId = undefined;
+let bridgeId = undefined;
 let obsPort = undefined;
-let relayControlWebsocket = undefined;
-let relayStatusUpdateTime = new Date();
 let timerId = undefined;
-let relayStatus = relayStatusConnecting;
+let textEncoder = new TextEncoder();
 
 class Connection {
     constructor(connectionId) {
@@ -25,16 +25,20 @@ class Connection {
         this.obsWebsocket = undefined;
         this.status = connectionStatusConnectingToRelay;
         this.statusUpdateTime = new Date();
+        this.bridgeToDeviceBytes = 0
+        this.bridgeToObsBytes = 0
+        this.bitrateToDevice = 0
+        this.bitrateToObs = 0
+        this.prevBitrateToDeviceBytes = 0
+        this.prevBitrateToObsBytes = 0
     }
 
     close() {
         if (this.relayDataWebsocket != undefined) {
             this.relayDataWebsocket.close();
-            this.relayDataWebsocket = undefined;
         }
         if (this.obsWebsocket != undefined) {
             this.obsWebsocket.close();
-            this.obsWebsocket = undefined;
         }
     }
 
@@ -59,23 +63,22 @@ class Connection {
 
     setupRelayDataWebsocket() {
         this.relayDataWebsocket = new WebSocket(
-            `wss://mys-lang.org/obs-remote-control-relay/server/data/${serverId}/${this.connectionId}`);
+            `wss://mys-lang.org/obs-remote-control-relay/bridge/data/${bridgeId}/${this.connectionId}`);
         this.status = connectionStatusConnectingToRelay;
         this.relayDataWebsocket.onopen = (event) => {
             this.setupObsWebsocket();
         };
         this.relayDataWebsocket.onclose = (event) => {
             this.setStatus(connectionStatusRelayClosed);
-            this.relayDataWebsocket = undefined;
             this.close();
         };
         this.relayDataWebsocket.onclose = (event) => {
             this.setStatus(connectionStatusRelayError);
-            this.relayDataWebsocket = undefined;
             this.close();
         };
         this.relayDataWebsocket.onmessage = async (event) => {
-            if (this.obsWebsocket != undefined) {
+            if (this.obsWebsocket.readyState == WebSocket.OPEN) {
+                this.bridgeToObsBytes += textEncoder.encode(event.data).length;
                 this.obsWebsocket.send(event.data);
             }
         };
@@ -89,22 +92,81 @@ class Connection {
         };
         this.obsWebsocket.onerror = (event) => {
             this.setStatus(connectionStatusObsError);
-            this.obsWebsocket = undefined;
             this.close();
         };
         this.obsWebsocket.onclose = (event) => {
             this.setStatus(connectionStatusObsClosed);
-            this.obsWebsocket = undefined;
             this.close();
         };
         this.obsWebsocket.onmessage = async (event) => {
-            if (this.relayDataWebsocket != undefined) {
+            if (this.relayDataWebsocket.readyState == WebSocket.OPEN) {
+                this.bridgeToDeviceBytes += textEncoder.encode(event.data).length;
                 this.relayDataWebsocket.send(event.data);
+            }
+        };
+    }
+
+    updateBitrates() {
+        this.bitrateToDevice = 8 * (this.bridgeToDeviceBytes - this.prevBitrateToDeviceBytes)
+        this.prevBitrateToDeviceBytes = this.bridgeToDeviceBytes
+        this.bitrateToObs = 8 * (this.bridgeToObsBytes - this.prevBitrateToObsBytes)
+        this.prevBitrateToObsBytes = this.bridgeToObsBytes
+    }
+}
+
+class Relay {
+    constructor() {
+        this.controlWebsocket = undefined;
+        this.statusUpdateTime = new Date();
+        this.status = relayStatusConnecting;
+    }
+
+    close() {
+        if (this.controlWebsocket != undefined) {
+            this.controlWebsocket.close();
+            this.controlWebsocket = undefined;
+        }
+    }
+
+    setStatus(newStatus) {
+        if (this.status == newStatus) {
+            return;
+        }
+        this.status = newStatus;
+        this.statusUpdateTime = new Date();
+        updateRelayStatus();
+    }
+
+    setupControlWebsocket() {
+        this.controlWebsocket = new WebSocket(
+            `wss://mys-lang.org/obs-remote-control-relay/bridge/control/${bridgeId}`);
+        this.setStatus(relayStatusConnecting);
+        this.controlWebsocket.onopen = (event) => {
+            this.setStatus(relayStatusConnected);
+        };
+        this.controlWebsocket.onerror = (event) => {
+            reset(10000);
+        };
+        this.controlWebsocket.onclose = (event) => {
+            if (event.code == kickedCode) {
+                this.setStatus(relayStatusKicked);
+            } else {
+                reset(10000);
+            }
+        };
+        this.controlWebsocket.onmessage = async (event) => {
+            let connectionId = event.data;
+            let connection = new Connection(connectionId);
+            connection.setupRelayDataWebsocket();
+            connections.unshift(connection);
+            while (connections.length > 10) {
+                connections.pop().close();
             }
         };
     }
 }
 
+let relay = undefined;
 let connections = [];
 
 function numberSuffix(value) {
@@ -127,13 +189,16 @@ function timeAgoString(fromDate) {
     }
 }
 
-function setRelayStatus(newStatus) {
-    if (relayStatus == newStatus) {
-        return;
+function bitrateToString(bitrate) {
+    if (bitrate < 1000) {
+        return `${bitrate} bps`;
+    } else if (bitrate < 1000000) {
+        let bitrateKbps = (bitrate / 1000).toFixed(1);
+        return `${bitrateKbps} kbps`;
+    } else {
+        let bitrateMbps = (bitrate / 1000000).toFixed(1);
+        return `${bitrateMbps} Mbps`;
     }
-    relayStatus = newStatus;
-    relayStatusUpdateTime = new Date();
-    updateRelayStatus();
 }
 
 function reset(delayMs) {
@@ -141,50 +206,23 @@ function reset(delayMs) {
         connection.close();
     }
     connections = [];
-    setRelayStatus(relayStatusConnecting);
-    if (relayControlWebsocket != undefined) {
-        relayControlWebsocket.close();
-        relayControlWebsocket = undefined;
-    }
+    relay.close();
+    relay = new Relay();
     if (timerId != undefined) {
         clearTimeout(timerId);
     }
     timerId = setTimeout(() => {
-        timer = undefined;
-        setupRelayControlWebsocket();
+        timerId = undefined;
+        relay.setupControlWebsocket();
     }, delayMs);
 }
 
-function setupRelayControlWebsocket() {
-    relayControlWebsocket = new WebSocket(
-        `wss://mys-lang.org/obs-remote-control-relay/server/control/${serverId}`);
-    setRelayStatus(relayStatusConnecting);
-    relayControlWebsocket.onopen = (event) => {
-        setRelayStatus(relayStatusConnected);
-    };
-    relayControlWebsocket.onerror = (event) => {
-        reset(10000);
-    };
-    relayControlWebsocket.onclose = (event) => {
-        reset(10000);
-    };
-    relayControlWebsocket.onmessage = async (event) => {
-        connectionId = event.data;
-        let connection = new Connection(connectionId);
-        connection.setupRelayDataWebsocket();
-        connections.unshift(connection);
-        while (connections.length > 10) {
-            connections.pop();
-        }
-    };
-}
-
 function copyMoblinClientUrlToClipboard() {
-    navigator.clipboard.writeText(`wss://mys-lang.org/obs-remote-control-relay/client/${serverId}`);
+    navigator.clipboard.writeText(`wss://mys-lang.org/obs-remote-control-relay/client/${bridgeId}`);
 }
 
 function copyObsBladeHostnameClientUrlToClipboard() {
-    navigator.clipboard.writeText(`mys-lang.org/obs-remote-control-relay/client/${serverId}`);
+    navigator.clipboard.writeText(`mys-lang.org/obs-remote-control-relay/client/${bridgeId}`);
 }
 
 function populateObsPort() {
@@ -198,8 +236,8 @@ function saveObsPort() {
 }
 
 function resetSettings() {
-    serverId = crypto.randomUUID();
-    localStorage.setItem('serverId', serverId);
+    bridgeId = crypto.randomUUID();
+    localStorage.setItem('bridgeId', bridgeId);
     obsPort = defaultObsPort;
     localStorage.setItem('obsPort', obsPort);
     populateObsPort();
@@ -231,31 +269,35 @@ function updateConnections() {
         }
         appendToRow(row, statusWithIcon);
         appendToRow(row, timeAgoString(connection.statusUpdateTime));
+        appendToRow(row, bitrateToString(connection.bitrateToDevice));
+        appendToRow(row, bitrateToString(connection.bitrateToObs));
     }
 }
 
 function updateRelayStatus() {
-    let statusWithIcon = `<i class="p-icon--spinner u-animation--spin"></i> ${relayStatus}`;
-    if (relayStatus == relayStatusConnected) {
-        statusWithIcon = `<i class="p-icon--success"></i> ${relayStatus}`;
+    let statusWithIcon = `<i class="p-icon--spinner u-animation--spin"></i> ${relay.status}`;
+    if (relay.status == relayStatusConnected) {
+        statusWithIcon = `<i class="p-icon--success"></i> ${relay.status}`;
+    } else if (relay.status == relayStatusKicked) {
+        statusWithIcon = `<i class="p-icon--error"></i> ${relay.status}`;
     }
     document.getElementById('relayStatus').innerHTML = statusWithIcon;
     updateRelayStatusTimeAgo();
 }
 
 function updateRelayStatusTimeAgo() {
-    document.getElementById('relayStatusTimeAgo').innerHTML = `Status changed ${timeAgoString(relayStatusUpdateTime)}.`;
+    document.getElementById('relayStatusTimeAgo').innerHTML = `Status changed ${timeAgoString(relay.statusUpdateTime)}.`;
 }
 
-function loadServerId(urlParams) {
-    serverId = urlParams.get('serverId');
-    if (serverId == undefined) {
-        serverId = localStorage.getItem('serverId');
+function loadbridgeId(urlParams) {
+    bridgeId = urlParams.get('bridgeId');
+    if (bridgeId == undefined) {
+        bridgeId = localStorage.getItem('bridgeId');
     }
-    if (serverId == undefined) {
-        serverId = crypto.randomUUID();
+    if (bridgeId == undefined) {
+        bridgeId = crypto.randomUUID();
     }
-    localStorage.setItem('serverId', serverId);
+    localStorage.setItem('bridgeId', bridgeId);
 }
 
 function loadObsPort(urlParams) {
@@ -271,14 +313,18 @@ function loadObsPort(urlParams) {
 
 window.addEventListener('DOMContentLoaded', async (event) => {
     const urlParams = new URLSearchParams(window.location.search);
-    loadServerId(urlParams);
+    loadbridgeId(urlParams);
     loadObsPort(urlParams);
-    setupRelayControlWebsocket();
+    relay = new Relay();
+    relay.setupControlWebsocket();
     populateObsPort();
     updateConnections();
     updateRelayStatus();
     setInterval(() => {
         updateRelayStatusTimeAgo();
+        for (const connection of connections) {
+            connection.updateBitrates();
+        }
         updateConnections();
     }, 1000);
 });

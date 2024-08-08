@@ -47,13 +47,15 @@
       <div class="col-2"></div>
       <div class="col-8">
         <div class="p-card">
-          <h2>Connections</h2>
+          <h2>Remote control devices</h2>
           <div>
             <table id="connections" style="table-layout:auto">
               <thead>
                 <tr>
                   <th>Status</th>
-                  <th>Status age</th>
+                  <th>Status changed</th>
+                  <th>Bitrate to device</th>
+                  <th>Bitrate to OBS</th>
                 </tr>
               </thead>
               <tbody></tbody>
@@ -69,7 +71,7 @@
       <div class="col-2"></div>
       <div class="col-8">
         <div class="p-card">
-          <h2>Relay</h2>
+          <h2>Relay status</h2>
           <p id="relayStatus"></p>
           <p id="relayStatusTimeAgo"></p>
         </div>
@@ -81,8 +83,8 @@
       <div class="col-2"></div>
       <div class="col-8">
         <div class="p-card">
-          <h2>Streaming device setup</h2>
-            Setup the OBS remote control in your streaming device.
+          <h2>Remote control setup</h2>
+            Setup the OBS remote control in your device.
           <h3>Moblin</h3>
           <button onclick="copyMoblinClientUrlToClipboard()">
             <i class="p-icon--copy"></i> URL
@@ -96,7 +98,7 @@
           <div class="p-notification--caution is-inline">
             <div class="p-notification__content">
               <p class="p-notification__message">
-                Handle your streaming device configuration same as a
+                Handle your remote control device configuration same as a
                 password: never share it and don't show it on your
                 stream.
               </p>
