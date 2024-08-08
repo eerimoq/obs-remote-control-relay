@@ -147,9 +147,12 @@ func serveRemoteController(w http.ResponseWriter, r *http.Request) {
 	acceptedRemoteControllerWebsockets.Add(1)
 	connectionId := uuid.New().String()
 	connection := &Connection{mutex: &sync.Mutex{}, remoteControllerWebsocket: remoteControllerWebsocket}
+	message := fmt.Sprintf(
+		"{\"type\": \"connect\", \"data\": {\"connectionId\": \"%v\"}}",
+		connectionId)
 	bridge.mutex.Lock()
 	bridge.connections[connectionId] = connection
-	bridge.controlWebsocket.Write(context, websocket.MessageText, []byte(connectionId))
+	bridge.controlWebsocket.Write(context, websocket.MessageText, []byte(message))
 	bridge.mutex.Unlock()
 	for {
 		messageType, message, err := remoteControllerWebsocket.Read(context)

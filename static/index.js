@@ -155,12 +155,15 @@ class Relay {
             }
         };
         this.controlWebsocket.onmessage = async (event) => {
-            let connectionId = event.data;
-            let connection = new Connection(connectionId);
-            connection.setupRelayDataWebsocket();
-            connections.unshift(connection);
-            while (connections.length > 5) {
-                connections.pop().close();
+            let message = JSON.parse(event.data);
+            if (message.type == "connect") {
+                let connectionId = message.data.connectionId;
+                let connection = new Connection(connectionId);
+                connection.setupRelayDataWebsocket();
+                connections.unshift(connection);
+                while (connections.length > 5) {
+                    connections.pop().close();
+                }
             }
         };
     }
