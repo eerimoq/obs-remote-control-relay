@@ -7,8 +7,8 @@ const connectionStatusConnectingToObs = "Connecting to OBS on this computer...";
 const connectionStatusObsClosed = "OBS connection closed";
 const connectionStatusObsError = "OBS connection error";
 const connectionStatusConnected = "Connected";
-const connectionStatusRelayClosed = "Device connection closed";
-const connectionStatusRelayError = "Device connection error";
+const connectionStatusRelayClosed = "Remote controller connection closed";
+const connectionStatusRelayError = "Remote controller connection error";
 
 const defaultObsPort = "4455";
 const kickedCode = 3000;
