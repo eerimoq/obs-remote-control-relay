@@ -68,8 +68,8 @@ class Connection {
         this.relayDataWebsocket.onopen = (event) => {
             this.setupObsWebsocket();
         };
-        this.relayDataWebsocket.onclose = (event) => {
-            this.setStatus(connectionStatusRelayClosed);
+        this.relayDataWebsocket.onerror = (event) => {
+            this.setStatus(connectionStatusRelayError);
             this.close();
         };
         this.relayDataWebsocket.onclose = (event) => {
