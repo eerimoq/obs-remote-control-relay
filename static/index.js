@@ -159,7 +159,7 @@ class Relay {
             let connection = new Connection(connectionId);
             connection.setupRelayDataWebsocket();
             connections.unshift(connection);
-            while (connections.length > 10) {
+            while (connections.length > 5) {
                 connections.pop().close();
             }
         };
