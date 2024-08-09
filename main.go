@@ -37,6 +37,7 @@ type Bridge struct {
 	mutex            *sync.Mutex
 	controlWebsocket *websocket.Conn
 	connections      map[string]*Connection
+	statusWebsockets map[*websocket.Conn]bool
 }
 
 func (b *Bridge) close(kicked bool) {
@@ -51,6 +52,10 @@ func (b *Bridge) close(kicked bool) {
 	}
 	for _, connection := range b.connections {
 		connection.close()
+	}
+	b.connections = make(map[string]*Connection)
+	for statusWebsocket := range b.statusWebsockets {
+		statusWebsocket.Close(websocket.StatusAbnormalClosure, "")
 	}
 	b.connections = make(map[string]*Connection)
 	b.mutex.Unlock()
@@ -75,14 +80,29 @@ func serveBridgeControl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	bridgeId := r.PathValue("bridgeId")
-	bridge := &Bridge{mutex: &sync.Mutex{}, controlWebsocket: bridgeControlWebsocket, connections: make(map[string]*Connection)}
+	bridge := &Bridge{
+		mutex:            &sync.Mutex{},
+		controlWebsocket: bridgeControlWebsocket,
+		connections:      make(map[string]*Connection),
+		statusWebsockets: make(map[*websocket.Conn]bool),
+	}
 	acceptedBridgeControlWebsockets.Add(1)
 	bridgeToClose, loaded := bridges.LoadAndStore(bridgeId, bridge)
 	if loaded {
 		kickedBridges.Add(1)
 		bridgeToClose.close(true)
 	}
-	_, _, _ = bridgeControlWebsocket.Read(context)
+	for {
+		messageType, message, err := bridgeControlWebsocket.Read(context)
+		if err != nil {
+			break
+		}
+		bridge.mutex.Lock()
+		for statusWebsocket := range bridge.statusWebsockets {
+			statusWebsocket.Write(context, messageType, message)
+		}
+		bridge.mutex.Unlock()
+	}
 	bridges.Compute(
 		bridgeId,
 		func(oldValue *Bridge, loaded bool) (*Bridge, bool) {
@@ -174,6 +194,41 @@ func serveRemoteController(w http.ResponseWriter, r *http.Request) {
 	connection.close()
 }
 
+func serveStatus(w http.ResponseWriter, r *http.Request) {
+	context := r.Context()
+	bridgeId := r.PathValue("bridgeId")
+	bridge, ok := bridges.Load(bridgeId)
+	if !ok {
+		return
+	}
+	statusWebsocket, err := websocket.Accept(w, r, nil)
+	if err != nil {
+		return
+	}
+	statusWebsocket.SetReadLimit(-1)
+	bridge.mutex.Lock()
+	if len(bridge.statusWebsockets) == 0 {
+		if bridge.controlWebsocket == nil {
+			return
+		}
+		message := "{\"type\": \"startStatus\"}"
+		bridge.controlWebsocket.Write(context, websocket.MessageText, []byte(message))
+	}
+	bridge.statusWebsockets[statusWebsocket] = true
+	bridge.mutex.Unlock()
+	_, _, _ = statusWebsocket.Read(context)
+	bridge.mutex.Lock()
+	delete(bridge.statusWebsockets, statusWebsocket)
+	if len(bridge.statusWebsockets) == 0 {
+		message := "{\"type\": \"stopStatus\"}"
+		if bridge.controlWebsocket != nil {
+			bridge.controlWebsocket.Write(context, websocket.MessageText, []byte(message))
+		}
+	}
+	bridge.mutex.Unlock()
+	statusWebsocket.Close(websocket.StatusAbnormalClosure, "")
+}
+
 func serveStatsJson(w http.ResponseWriter, _ *http.Request) {
 	statsJson := fmt.Sprintf(
 		`{
@@ -229,6 +284,9 @@ func main() {
 	})
 	http.HandleFunc("/remote-controller/{bridgeId}", func(w http.ResponseWriter, r *http.Request) {
 		serveRemoteController(w, r)
+	})
+	http.HandleFunc("/status/{bridgeId}", func(w http.ResponseWriter, r *http.Request) {
+		serveStatus(w, r)
 	})
 	http.HandleFunc("/stats.json", func(w http.ResponseWriter, r *http.Request) {
 		serveStatsJson(w, r)

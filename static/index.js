@@ -119,6 +119,7 @@ class Relay {
         this.controlWebsocket = undefined;
         this.statusUpdateTime = new Date();
         this.status = relayStatusConnecting;
+        this.statusEnabled = false;
     }
 
     close() {
@@ -135,6 +136,12 @@ class Relay {
         this.status = newStatus;
         this.statusUpdateTime = new Date();
         updateRelayStatus();
+    }
+
+    sendStatus(status) {
+        if (this.controlWebsocket != undefined && this.controlWebsocket.readyState == WebSocket.OPEN) {
+            this.controlWebsocket.send(JSON.stringify(status))
+        }
     }
 
     setupControlWebsocket() {
@@ -164,6 +171,10 @@ class Relay {
                 while (connections.length > 5) {
                     connections.pop().close();
                 }
+            } else if (message.type == "startStatus") {
+                this.statusEnabled = true;
+            } else if (message.type == "stopStatus") {
+                this.statusEnabled = false;
             }
         };
     }
@@ -277,6 +288,25 @@ function updateConnections() {
     }
 }
 
+function updateStatus() {
+    if (!relay.statusEnabled) {
+        return;
+    }
+    let status = {
+        connections: []
+    };
+    for (const connection of connections) {
+        status.connections.push({
+            status: connection.status,
+            aborted: connection.isAborted(),
+            statusUpdateTime: connection.statusUpdateTime,
+            bitrateToRemoteController: connection.bitrateToRemoteController,
+            bitrateToObs: connection.bitrateToObs
+        });
+    }
+    relay.sendStatus(status);
+}
+
 function updateRelayStatus() {
     let statusWithIcon = `<i class="p-icon--spinner u-animation--spin"></i> ${relay.status}`;
     if (relay.status == relayStatusConnected) {
@@ -329,5 +359,6 @@ window.addEventListener('DOMContentLoaded', async (event) => {
             connection.updateBitrates();
         }
         updateConnections();
+        updateStatus();
     }, 1000);
 });

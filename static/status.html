@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>OBS Remote Control Relay Status</title>
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
+    <link rel="stylesheet" href="vanilla-framework-version-4.14.0.min.css" />
+  </head>
+
+  <body class="is-dark" style="background:#1a1a1a">
+    <div class="row">
+      <div class="col-2"></div>
+      <div class="col-8" style="margin:auto">
+        <h1>OBS Remote Control Relay Status</h1>
+      </div>
+      <div class="col-2"></div>
+    </div>
+
+    <div class="row">
+      <div class="col-2"></div>
+      <div class="col-8">
+        <div class="p-card">
+          <h2>Remote controllers</h2>
+          <div>
+            <table id="connections" style="table-layout:auto">
+              <thead>
+                <tr>
+                  <th>Status</th>
+                  <th>Status changed</th>
+                  <th>Bitrate to remote controller</th>
+                  <th>Bitrate to OBS</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <div id="help"></div>
+        </div>
+      </div>
+      <div class="col-2"></div>
+    </div>
+
+    <script src="status.js"></script>
+  </body>
+</html>
