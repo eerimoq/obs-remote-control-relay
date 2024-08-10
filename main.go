@@ -11,6 +11,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/puzpuzpuz/xsync/v3"
+	"golang.org/x/time/rate"
 	"nhooyr.io/websocket"
 )
 
@@ -18,16 +19,17 @@ type Connection struct {
 	mutex                     *sync.Mutex
 	remoteControllerWebsocket *websocket.Conn
 	bridgeWebsocket           *websocket.Conn
+	rateLimiter               *rate.Limiter
 }
 
-func (c *Connection) close() {
+func (c *Connection) close(code websocket.StatusCode, reason string) {
 	c.mutex.Lock()
 	if c.remoteControllerWebsocket != nil {
-		c.remoteControllerWebsocket.Close(websocket.StatusGoingAway, "")
+		c.remoteControllerWebsocket.Close(code, reason)
 		c.remoteControllerWebsocket = nil
 	}
 	if c.bridgeWebsocket != nil {
-		c.bridgeWebsocket.Close(websocket.StatusGoingAway, "")
+		c.bridgeWebsocket.Close(code, reason)
 		c.bridgeWebsocket = nil
 	}
 	c.mutex.Unlock()
@@ -51,7 +53,7 @@ func (b *Bridge) close(kicked bool) {
 		b.controlWebsocket = nil
 	}
 	for _, connection := range b.connections {
-		connection.close()
+		connection.close(websocket.StatusGoingAway, "")
 	}
 	b.connections = make(map[string]*Connection)
 	for statusWebsocket := range b.statusWebsockets {
@@ -70,6 +72,7 @@ var acceptedRemoteControllerWebsockets = xsync.NewCounter()
 var rejectedRemoteControllerWebsocketsNoBridge = xsync.NewCounter()
 var bridgeToRemoteControllerBytes = xsync.NewCounter()
 var remoteControllerToBridgeBytes = xsync.NewCounter()
+var rateLimitExceeded = xsync.NewCounter()
 var bridgeToRemoteControllerBitrate atomic.Int64
 var remoteControllerToBridgeBitrate atomic.Int64
 
@@ -132,13 +135,23 @@ func serveBridgeData(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	connection.bridgeWebsocket = bridgeWebsocket
+	rateLimiter := connection.rateLimiter
 	bridge.mutex.Unlock()
+	code := websocket.StatusGoingAway
+	reason := ""
 	for {
 		messageType, message, err := bridgeWebsocket.Read(context)
 		if err != nil {
 			break
 		}
-		bridgeToRemoteControllerBytes.Add(int64(len(message)))
+		length := len(message)
+		bridgeToRemoteControllerBytes.Add(int64(length))
+		if !rateLimiter.AllowN(time.Now(), 8*length) {
+			rateLimitExceeded.Inc()
+			code = 3001
+			reason = "Rate limit exceeded"
+			break
+		}
 		connection.mutex.Lock()
 		if connection.remoteControllerWebsocket != nil {
 			connection.remoteControllerWebsocket.Write(context, messageType, message)
@@ -148,7 +161,7 @@ func serveBridgeData(w http.ResponseWriter, r *http.Request) {
 	bridge.mutex.Lock()
 	delete(bridge.connections, connectionId)
 	bridge.mutex.Unlock()
-	connection.close()
+	connection.close(code, reason)
 }
 
 func serveRemoteController(w http.ResponseWriter, r *http.Request) {
@@ -166,7 +179,13 @@ func serveRemoteController(w http.ResponseWriter, r *http.Request) {
 	remoteControllerWebsocket.SetReadLimit(-1)
 	acceptedRemoteControllerWebsockets.Add(1)
 	connectionId := uuid.New().String()
-	connection := &Connection{mutex: &sync.Mutex{}, remoteControllerWebsocket: remoteControllerWebsocket}
+	// Average 0.5 Mbps, burst 2 Mbps.
+	rateLimiter := rate.NewLimiter(rate.Every(time.Microsecond)/2, 2000000)
+	connection := &Connection{
+		mutex:                     &sync.Mutex{},
+		remoteControllerWebsocket: remoteControllerWebsocket,
+		rateLimiter:               rateLimiter,
+	}
 	message := fmt.Sprintf(
 		"{\"type\": \"connect\", \"data\": {\"connectionId\": \"%v\"}}",
 		connectionId)
@@ -174,12 +193,21 @@ func serveRemoteController(w http.ResponseWriter, r *http.Request) {
 	bridge.connections[connectionId] = connection
 	bridge.controlWebsocket.Write(context, websocket.MessageText, []byte(message))
 	bridge.mutex.Unlock()
+	code := websocket.StatusGoingAway
+	reason := ""
 	for {
 		messageType, message, err := remoteControllerWebsocket.Read(context)
 		if err != nil {
 			break
 		}
-		remoteControllerToBridgeBytes.Add(int64(len(message)))
+		length := len(message)
+		remoteControllerToBridgeBytes.Add(int64(length))
+		if !rateLimiter.AllowN(time.Now(), 8*length) {
+			rateLimitExceeded.Inc()
+			code = 3001
+			reason = "Rate limit exceeded"
+			break
+		}
 		connection.mutex.Lock()
 		if connection.bridgeWebsocket == nil {
 			connection.mutex.Unlock()
@@ -191,7 +219,7 @@ func serveRemoteController(w http.ResponseWriter, r *http.Request) {
 	bridge.mutex.Lock()
 	delete(bridge.connections, connectionId)
 	bridge.mutex.Unlock()
-	connection.close()
+	connection.close(code, reason)
 }
 
 func serveStatus(w http.ResponseWriter, r *http.Request) {
@@ -238,6 +266,7 @@ func serveStatsJson(w http.ResponseWriter, _ *http.Request) {
 	"kickedBridges": %v,
 	"acceptedRemoteControllerWebsockets": %v,
 	"rejectedRemoteControllerWebsocketsNoBridge": %v,
+	"rateLimitExceeded": %v,
 	"bridgeToRemoteControllerBytes": %v,
 	"remoteControllerToBridgeBytes": %v,
 	"bridgeToRemoteControllerBitrate": %v,
@@ -249,6 +278,7 @@ func serveStatsJson(w http.ResponseWriter, _ *http.Request) {
 		kickedBridges.Value(),
 		acceptedRemoteControllerWebsockets.Value(),
 		rejectedRemoteControllerWebsocketsNoBridge.Value(),
+		rateLimitExceeded.Value(),
 		bridgeToRemoteControllerBytes.Value(),
 		remoteControllerToBridgeBytes.Value(),
 		bridgeToRemoteControllerBitrate.Load(),

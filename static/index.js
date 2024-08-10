@@ -9,6 +9,7 @@ const connectionStatusObsError = "OBS connection error";
 const connectionStatusConnected = "Connected";
 const connectionStatusRemoteControllerClosed = "Remote controller connection closed";
 const connectionStatusRemoteControllerError = "Remote controller connection error";
+const connectionStatusRateLimitExceeded = "Rate limit exceeded";
 
 const defaultObsPort = "4455";
 const kickedCode = 3000;
@@ -58,7 +59,8 @@ class Connection {
         return ((this.status == connectionStatusRemoteControllerClosed)
                 || (this.status == connectionStatusRemoteControllerError)
                 || (this.status == connectionStatusObsClosed)
-                || (this.status == connectionStatusObsError));
+                || (this.status == connectionStatusObsError)
+                || (this.status == connectionStatusRateLimitExceeded));
     }
 
     setupRelayDataWebsocket() {
@@ -73,7 +75,11 @@ class Connection {
             this.close();
         };
         this.relayDataWebsocket.onclose = (event) => {
-            this.setStatus(connectionStatusRemoteControllerError);
+            if (event.code == 3001) {
+               this.setStatus(connectionStatusRateLimitExceeded);
+            } else {
+                this.setStatus(connectionStatusRemoteControllerError);
+            }
             this.close();
         };
         this.relayDataWebsocket.onmessage = async (event) => {
