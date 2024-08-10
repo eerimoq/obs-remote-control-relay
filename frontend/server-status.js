@@ -11,14 +11,10 @@ function updateStatsGeneral(body, stats) {
 
 function updateStatsBridges(body, stats) {
     appendRow(body, "Bridges", "Connected", stats.bridges.connected);
-    appendRow(body, "Bridges", "Accepted control websockets", stats.bridges.acceptedControlWebsockets);
-    appendRow(body, "Bridges", "Accepted data websockets", stats.bridges.acceptedDataWebsockets);
-    appendRow(body, "Bridges", "Kicked", stats.bridges.kicked);
 }
 
 function updateStatsRemoteControllers(body, stats) {
-    appendRow(body, "Remote controllers", "Accepted websockets", stats.remoteControllers.acceptedWebsockets);
-    appendRow(body, "Remote controllers", "Rejected websockets no bridge", stats.remoteControllers.rejectedWebsocketsNoBridge);
+    appendRow(body, "Remote controllers", "Connected", stats.remoteControllers.connected);
 }
 
 function updateStatsTrafficBridgesToRemoteControllers(body, stats) {

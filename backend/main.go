@@ -40,6 +40,7 @@ type Connection struct {
 func (c *Connection) close(code websocket.StatusCode, reason string) {
 	c.mutex.Lock()
 	if c.remoteControllerWebsocket != nil {
+		remoteControllersConnected.Add(-1)
 		c.remoteControllerWebsocket.Close(code, reason)
 		c.remoteControllerWebsocket = nil
 	}
@@ -83,11 +84,7 @@ var reverseProxyBase = flag.String("reverse_proxy_base", "", "Reverse proxy base
 
 var bridges = xsync.NewMapOf[string, *Bridge]()
 var startTime = time.Now()
-var acceptedBridgeControlWebsockets = xsync.NewCounter()
-var acceptedBridgeDataWebsockets = xsync.NewCounter()
-var kickedBridges = xsync.NewCounter()
-var acceptedRemoteControllerWebsockets = xsync.NewCounter()
-var rejectedRemoteControllerWebsocketsNoBridge = xsync.NewCounter()
+var remoteControllersConnected = xsync.NewCounter()
 var bridgeToRemoteControllerBytes = xsync.NewCounter()
 var remoteControllerToBridgeBytes = xsync.NewCounter()
 var rateLimitExceeded = xsync.NewCounter()
@@ -107,10 +104,8 @@ func serveBridgeControl(w http.ResponseWriter, r *http.Request) {
 		connections:      make(map[string]*Connection),
 		statusWebsockets: make(map[*websocket.Conn]bool),
 	}
-	acceptedBridgeControlWebsockets.Add(1)
 	bridgeToClose, loaded := bridges.LoadAndStore(bridgeId, bridge)
 	if loaded {
-		kickedBridges.Add(1)
 		bridgeToClose.close(true)
 	}
 	for {
@@ -141,7 +136,6 @@ func serveBridgeData(w http.ResponseWriter, r *http.Request) {
 	bridgeWebsocket.SetReadLimit(-1)
 	bridgeId := r.PathValue("bridgeId")
 	connectionId := r.PathValue("connectionId")
-	acceptedBridgeDataWebsockets.Add(1)
 	bridge, ok := bridges.Load(bridgeId)
 	if !ok {
 		return
@@ -187,7 +181,6 @@ func serveRemoteController(w http.ResponseWriter, r *http.Request) {
 	bridgeId := r.PathValue("bridgeId")
 	bridge, ok := bridges.Load(bridgeId)
 	if !ok {
-		rejectedRemoteControllerWebsocketsNoBridge.Add(1)
 		return
 	}
 	remoteControllerWebsocket, err := websocket.Accept(w, r, nil)
@@ -195,7 +188,6 @@ func serveRemoteController(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	remoteControllerWebsocket.SetReadLimit(-1)
-	acceptedRemoteControllerWebsockets.Add(1)
 	connectionId := uuid.New().String()
 	// Average 0.5 Mbps, burst 10 Mbps.
 	rateLimiter := rate.NewLimiter(rate.Every(time.Microsecond)/2, 10000000)
@@ -204,6 +196,7 @@ func serveRemoteController(w http.ResponseWriter, r *http.Request) {
 		remoteControllerWebsocket: remoteControllerWebsocket,
 		rateLimiter:               rateLimiter,
 	}
+	remoteControllersConnected.Add(1)
 	bridge.mutex.Lock()
 	bridge.connections[connectionId] = connection
 	wsjson.Write(context, bridge.controlWebsocket, ControlMessage{
@@ -290,15 +283,11 @@ type StatsTrafficDirection struct {
 }
 
 type StatsBridges struct {
-	Connected                 int   `json:"connected"`
-	AcceptedControlWebsockets int64 `json:"acceptedControlWebsockets"`
-	AcceptedDataWebsockets    int64 `json:"acceptedDataWebsockets"`
-	Kicked                    int64 `json:"kicked"`
+	Connected int `json:"connected"`
 }
 
 type StatsRemoteControllers struct {
-	AcceptedWebsockets         int64 `json:"acceptedWebsockets"`
-	RejectedWebsocketsNoBridge int64 `json:"rejectedWebsocketsNoBridge"`
+	Connected int64 `json:"connected"`
 }
 
 type StatsTraffic struct {
@@ -320,14 +309,10 @@ func serveStatsJson(w http.ResponseWriter, _ *http.Request) {
 			RateLimitExceeded: rateLimitExceeded.Value(),
 		},
 		Bridges: StatsBridges{
-			Connected:                 bridges.Size(),
-			AcceptedControlWebsockets: acceptedBridgeControlWebsockets.Value(),
-			AcceptedDataWebsockets:    acceptedBridgeDataWebsockets.Value(),
-			Kicked:                    kickedBridges.Value(),
+			Connected: bridges.Size(),
 		},
 		RemoteControllers: StatsRemoteControllers{
-			AcceptedWebsockets:         acceptedRemoteControllerWebsockets.Value(),
-			RejectedWebsocketsNoBridge: rejectedRemoteControllerWebsocketsNoBridge.Value(),
+			Connected: remoteControllersConnected.Value(),
 		},
 		Traffic: StatsTraffic{
 			BridgesToRemoteControllers: StatsTrafficDirection{
