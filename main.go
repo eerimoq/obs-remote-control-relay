@@ -1,8 +1,8 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
-	"fmt"
 	"log"
 	"net/http"
 	"sync"
@@ -275,34 +275,71 @@ func serveStatus(w http.ResponseWriter, r *http.Request) {
 	statusWebsocket.Close(websocket.StatusAbnormalClosure, "")
 }
 
+type StatsGeneral struct {
+	RateLimitExceeded int64 `json:"rateLimitExceeded"`
+}
+
+type StatsTrafficDirection struct {
+	TotalBytes     int64 `json:"totalBytes"`
+	CurrentBitrate int64 `json:"currentBitrate"`
+}
+
+type StatsBridges struct {
+	Connected                 int   `json:"connected"`
+	AcceptedControlWebsockets int64 `json:"acceptedControlWebsockets"`
+	AcceptedDataWebsockets    int64 `json:"acceptedDataWebsockets"`
+	Kicked                    int64 `json:"kicked"`
+}
+
+type StatsRemoteControllers struct {
+	AcceptedWebsockets         int64 `json:"acceptedWebsockets"`
+	RejectedWebsocketsNoBridge int64 `json:"rejectedWebsocketsNoBridge"`
+}
+
+type StatsTraffic struct {
+	BridgesToRemoteControllers StatsTrafficDirection `json:"bridgesToRemoteControllers"`
+	RemoteControllersToBridges StatsTrafficDirection `json:"remoteControllersToBridges"`
+}
+
+type Stats struct {
+	General           StatsGeneral           `json:"general"`
+	Bridges           StatsBridges           `json:"bridges"`
+	RemoteControllers StatsRemoteControllers `json:"remoteControllers"`
+	Traffic           StatsTraffic           `json:"traffic"`
+}
+
 func serveStatsJson(w http.ResponseWriter, _ *http.Request) {
-	statsJson := fmt.Sprintf(
-		`{
-	"bridgesConnected": %v,
-	"acceptedBridgeControlWebsockets": %v,
-	"acceptedBridgeDataWebsockets": %v,
-	"kickedBridges": %v,
-	"acceptedRemoteControllerWebsockets": %v,
-	"rejectedRemoteControllerWebsocketsNoBridge": %v,
-	"rateLimitExceeded": %v,
-	"bridgeToRemoteControllerBytes": %v,
-	"remoteControllerToBridgeBytes": %v,
-	"bridgeToRemoteControllerBitrate": %v,
-	"remoteControllerToBridgeBitrate": %v
-}`,
-		bridges.Size(),
-		acceptedBridgeControlWebsockets.Value(),
-		acceptedBridgeDataWebsockets.Value(),
-		kickedBridges.Value(),
-		acceptedRemoteControllerWebsockets.Value(),
-		rejectedRemoteControllerWebsocketsNoBridge.Value(),
-		rateLimitExceeded.Value(),
-		bridgeToRemoteControllerBytes.Value(),
-		remoteControllerToBridgeBytes.Value(),
-		bridgeToRemoteControllerBitrate.Load(),
-		remoteControllerToBridgeBitrate.Load())
+	stats := Stats{
+		General: StatsGeneral{
+			RateLimitExceeded: rateLimitExceeded.Value(),
+		},
+		Bridges: StatsBridges{
+			Connected:                 bridges.Size(),
+			AcceptedControlWebsockets: acceptedBridgeControlWebsockets.Value(),
+			AcceptedDataWebsockets:    acceptedBridgeDataWebsockets.Value(),
+			Kicked:                    kickedBridges.Value(),
+		},
+		RemoteControllers: StatsRemoteControllers{
+			AcceptedWebsockets:         acceptedRemoteControllerWebsockets.Value(),
+			RejectedWebsocketsNoBridge: rejectedRemoteControllerWebsocketsNoBridge.Value(),
+		},
+		Traffic: StatsTraffic{
+			BridgesToRemoteControllers: StatsTrafficDirection{
+				TotalBytes:     bridgeToRemoteControllerBytes.Value(),
+				CurrentBitrate: bridgeToRemoteControllerBitrate.Load(),
+			},
+			RemoteControllersToBridges: StatsTrafficDirection{
+				TotalBytes:     remoteControllerToBridgeBytes.Value(),
+				CurrentBitrate: remoteControllerToBridgeBitrate.Load(),
+			},
+		},
+	}
+	statsJson, err := json.Marshal(stats)
+	if err != nil {
+		return
+	}
 	w.Header().Add("content-type", "application/json")
-	w.Write([]byte(statsJson))
+	w.Write(statsJson)
 }
 
 func updateStats() {
