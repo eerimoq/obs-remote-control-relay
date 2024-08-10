@@ -13,7 +13,21 @@ import (
 	"github.com/puzpuzpuz/xsync/v3"
 	"golang.org/x/time/rate"
 	"nhooyr.io/websocket"
+	"nhooyr.io/websocket/wsjson"
 )
+
+const controlMessageTypeConnect = "connect"
+const controlMessageTypeStartStatus = "startStatus"
+const controlMessageTypeStopStatus = "stopStatus"
+
+type ControlMessage struct {
+	Type string `json:"type"`
+	Data any    `json:"data,omitempty"`
+}
+
+type ControlConnectData struct {
+	ConnectionId string `json:"connectionId"`
+}
 
 type Connection struct {
 	mutex                     *sync.Mutex
@@ -186,12 +200,14 @@ func serveRemoteController(w http.ResponseWriter, r *http.Request) {
 		remoteControllerWebsocket: remoteControllerWebsocket,
 		rateLimiter:               rateLimiter,
 	}
-	message := fmt.Sprintf(
-		"{\"type\": \"connect\", \"data\": {\"connectionId\": \"%v\"}}",
-		connectionId)
 	bridge.mutex.Lock()
 	bridge.connections[connectionId] = connection
-	bridge.controlWebsocket.Write(context, websocket.MessageText, []byte(message))
+	wsjson.Write(context, bridge.controlWebsocket, ControlMessage{
+		Type: controlMessageTypeConnect,
+		Data: ControlConnectData{
+			ConnectionId: connectionId,
+		},
+	})
 	bridge.mutex.Unlock()
 	code := websocket.StatusGoingAway
 	reason := ""
@@ -239,8 +255,9 @@ func serveStatus(w http.ResponseWriter, r *http.Request) {
 		if bridge.controlWebsocket == nil {
 			return
 		}
-		message := "{\"type\": \"startStatus\"}"
-		bridge.controlWebsocket.Write(context, websocket.MessageText, []byte(message))
+		wsjson.Write(context, bridge.controlWebsocket, ControlMessage{
+			Type: controlMessageTypeStartStatus,
+		})
 	}
 	bridge.statusWebsockets[statusWebsocket] = true
 	bridge.mutex.Unlock()
@@ -248,9 +265,10 @@ func serveStatus(w http.ResponseWriter, r *http.Request) {
 	bridge.mutex.Lock()
 	delete(bridge.statusWebsockets, statusWebsocket)
 	if len(bridge.statusWebsockets) == 0 {
-		message := "{\"type\": \"stopStatus\"}"
 		if bridge.controlWebsocket != nil {
-			bridge.controlWebsocket.Write(context, websocket.MessageText, []byte(message))
+			wsjson.Write(context, bridge.controlWebsocket, ControlMessage{
+				Type: controlMessageTypeStopStatus,
+			})
 		}
 	}
 	bridge.mutex.Unlock()
