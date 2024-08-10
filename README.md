@@ -9,7 +9,7 @@ A simple Go program serves a simple website and websocket endpoints.
 Run the Go program as a systemd service and use Nginx for TLS.
 
 ```
-go build
+cd backend && go build
 ```
 
 ## Systemd service
@@ -27,8 +27,8 @@ Type=simple
 Restart=always
 RestartSec=1
 User=erik
-ExecStart=/home/erik/obs-remote-control-relay/obs-remote-control-relay -address localhost:9999
-WorkingDirectory=/home/erik/obs-remote-control-relay
+ExecStart=/home/erik/obs-remote-control-relay/backend/obs-remote-control-relay -address localhost:9999
+WorkingDirectory=/home/erik/obs-remote-control-relay/backend
 KillSignal=SIGINT
 
 [Install]

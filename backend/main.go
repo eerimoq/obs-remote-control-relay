@@ -359,7 +359,7 @@ func updateStats() {
 func main() {
 	flag.Parse()
 	go updateStats()
-	static := http.FileServer(http.Dir("./static"))
+	static := http.FileServer(http.Dir("../frontend"))
 	http.Handle("/", static)
 	http.HandleFunc("/bridge/control/{bridgeId}", func(w http.ResponseWriter, r *http.Request) {
 		serveBridgeControl(w, r)
