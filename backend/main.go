@@ -79,7 +79,7 @@ func (b *Bridge) close(kicked bool) {
 }
 
 var address = flag.String("address", ":8080", "HTTP server address")
-var reverseProxyBase = flag.String("reverse_proxy_base", "", "Reverse proxy base")
+var reverseProxyBase = flag.String("reverse_proxy_base", "", "Reverse proxy base (default: \"\")")
 
 var bridges = xsync.NewMapOf[string, *Bridge]()
 var acceptedBridgeControlWebsockets = xsync.NewCounter()
