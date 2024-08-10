@@ -1,4 +1,6 @@
-const baseUrl = `${window.location.host}/obs-remote-control-relay`;
+const secure = `${window.location.protocol == "https:" ? "s" : ""}`;
+const wsScheme = `ws${secure}`;
+const httpScheme = `http${secure}`;
 
 function numberSuffix(value) {
     return (value == 1 ? "" : "s");

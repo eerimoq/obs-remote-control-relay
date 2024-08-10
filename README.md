@@ -27,7 +27,7 @@ Type=simple
 Restart=always
 RestartSec=1
 User=erik
-ExecStart=/home/erik/obs-remote-control-relay/backend/obs-remote-control-relay -address localhost:9999
+ExecStart=/home/erik/obs-remote-control-relay/backend/obs-remote-control-relay -address localhost:9999 -reverse_proxy_base /obs-remote-control-relay
 WorkingDirectory=/home/erik/obs-remote-control-relay/backend
 KillSignal=SIGINT
 

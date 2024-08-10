@@ -16,7 +16,7 @@ class Relay {
     }
 
     setupWebsocket() {
-        this.websocket = new WebSocket(`wss://${baseUrl}/status/${bridgeId}`);
+        this.websocket = new WebSocket(`${wsScheme}://${baseUrl}/status/${bridgeId}`);
         this.websocket.onerror = (event) => {
             updateConnections([]);
             reset(10000);
