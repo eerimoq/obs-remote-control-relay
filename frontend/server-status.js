@@ -31,7 +31,7 @@ function updateStatsTrafficRemoteControllersToBridges(body, stats) {
 }
 
 async function updateStats() {
-    let response = await fetch(`https://${baseUrl}/stats.json`)
+    let response = await fetch("stats.json")
     if (!response.ok) {
         return;
     }
