@@ -32,6 +32,21 @@ function bitrateToString(bitrate) {
     }
 }
 
+function bytesToString(bytes) {
+    if (bytes < 1000) {
+        return `${bytes} B`;
+    } else if (bytes < 1000000) {
+        let bytesKb = (bytes / 1000).toFixed(1);
+        return `${bytesKb} kB`;
+    } else if (bytes < 1000000000) {
+        let bytesMb = (bytes / 1000000).toFixed(1);
+        return `${bytesMb} MB`;
+    } else {
+        let bytesGb = (bytes / 1000000000).toFixed(1);
+        return `${bytesGb} GB`;
+    }
+}
+
 function getTableBody(id) {
     let table = document.getElementById(id);
     while (table.rows.length > 1) {

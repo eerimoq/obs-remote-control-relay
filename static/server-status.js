@@ -21,12 +21,12 @@ function updateStatsRemoteControllers(body, stats) {
 }
 
 function updateStatsTrafficBridgesToRemoteControllers(body, stats) {
-    appendRow(body, "Traffic / Bridges to remote controllers", "Total bytes", stats.traffic.bridgesToRemoteControllers.totalBytes);
+    appendRow(body, "Traffic / Bridges to remote controllers", "Total bytes", bytesToString(stats.traffic.bridgesToRemoteControllers.totalBytes));
     appendRow(body, "Traffic / Bridges to remote controllers", "Current bitrate", bitrateToString(stats.traffic.bridgesToRemoteControllers.currentBitrate));
 }
 
 function updateStatsTrafficRemoteControllersToBridges(body, stats) {
-    appendRow(body, "Traffic / Remote controllers to bridges", "Total bytes", stats.traffic.remoteControllersToBridges.totalBytes);
+    appendRow(body, "Traffic / Remote controllers to bridges", "Total bytes", bytesToString(stats.traffic.remoteControllersToBridges.totalBytes));
     appendRow(body, "Traffic / Remote controllers to bridges", "Current bitrate", bitrateToString(stats.traffic.remoteControllersToBridges.currentBitrate));
 }
 
