@@ -179,8 +179,8 @@ func serveRemoteController(w http.ResponseWriter, r *http.Request) {
 	remoteControllerWebsocket.SetReadLimit(-1)
 	acceptedRemoteControllerWebsockets.Add(1)
 	connectionId := uuid.New().String()
-	// Average 0.5 Mbps, burst 2 Mbps.
-	rateLimiter := rate.NewLimiter(rate.Every(time.Microsecond)/2, 2000000)
+	// Average 0.5 Mbps, burst 10 Mbps.
+	rateLimiter := rate.NewLimiter(rate.Every(time.Microsecond)/2, 10000000)
 	connection := &Connection{
 		mutex:                     &sync.Mutex{},
 		remoteControllerWebsocket: remoteControllerWebsocket,
