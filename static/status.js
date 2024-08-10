@@ -16,8 +16,7 @@ class Relay {
     }
 
     setupWebsocket() {
-        this.websocket = new WebSocket(
-            `wss://mys-lang.org/obs-remote-control-relay/status/${bridgeId}`);
+        this.websocket = new WebSocket(`wss://${baseUrl}/status/${bridgeId}`);
         this.websocket.onerror = (event) => {
             updateConnections([]);
             reset(10000);

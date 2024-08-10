@@ -65,7 +65,7 @@ class Connection {
 
     setupRelayDataWebsocket() {
         this.relayDataWebsocket = new WebSocket(
-            `wss://mys-lang.org/obs-remote-control-relay/bridge/data/${bridgeId}/${this.connectionId}`);
+            `wss://${baseUrl}/bridge/data/${bridgeId}/${this.connectionId}`);
         this.status = connectionStatusConnectingToRelay;
         this.relayDataWebsocket.onopen = (event) => {
             this.setupObsWebsocket();
@@ -151,8 +151,7 @@ class Relay {
     }
 
     setupControlWebsocket() {
-        this.controlWebsocket = new WebSocket(
-            `wss://mys-lang.org/obs-remote-control-relay/bridge/control/${bridgeId}`);
+        this.controlWebsocket = new WebSocket(`wss://${baseUrl}/bridge/control/${bridgeId}`);
         this.setStatus(relayStatusConnecting);
         this.controlWebsocket.onopen = (event) => {
             this.setStatus(relayStatusConnected);
@@ -206,11 +205,15 @@ function reset(delayMs) {
 }
 
 function copyMoblinRemoteControllerUrlToClipboard() {
-    navigator.clipboard.writeText(`wss://mys-lang.org/obs-remote-control-relay/remote-controller/${bridgeId}`);
+    navigator.clipboard.writeText(`wss://${baseUrl}/remote-controller/${bridgeId}`);
 }
 
 function copyObsBladeHostnameRemoteControllerUrlToClipboard() {
-    navigator.clipboard.writeText(`mys-lang.org/obs-remote-control-relay/remote-controller/${bridgeId}`);
+    navigator.clipboard.writeText(`${baseUrl}/remote-controller/${bridgeId}`);
+}
+
+function copyStatusPageUrlToClipboard() {
+    navigator.clipboard.writeText(`https://${baseUrl}/status.html?bridgeId=${bridgeId}`);
 }
 
 function populateObsPort() {

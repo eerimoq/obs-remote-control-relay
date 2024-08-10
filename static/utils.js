@@ -1,3 +1,5 @@
+const baseUrl = "mys-lang.org/obs-remote-control-relay"
+
 function numberSuffix(value) {
     return (value == 1 ? "" : "s");
 }
