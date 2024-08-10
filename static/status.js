@@ -62,6 +62,7 @@ function updateConnections(connections) {
         appendToRow(row, bitrateToString(connection.bitrateToObs));
     }
 }
+
 function loadbridgeId(urlParams) {
     bridgeId = urlParams.get('bridgeId');
     if (bridgeId == undefined) {

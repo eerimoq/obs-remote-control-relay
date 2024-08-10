@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>OBS Remote Control Relay Server Status</title>
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
+    <link rel="stylesheet" href="vanilla-framework-version-4.14.0.min.css" />
+  </head>
+
+  <body class="is-dark" style="background:#1a1a1a">
+    <div class="row">
+      <div class="col-2"></div>
+      <div class="col-8" style="margin:auto">
+        <h1>OBS Remote Control Relay Server Status</h1>
+      </div>
+      <div class="col-2"></div>
+    </div>
+
+    <div class="row">
+      <div class="col-2"></div>
+      <div class="col-8">
+        <div class="p-card">
+          <h2>Statistics</h2>
+          <div>
+            <table id="statistics" style="table-layout:auto">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Value</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div class="col-2"></div>
+    </div>
+
+    <script src="utils.js"></script>
+    <script src="server-status.js"></script>
+  </body>
+</html>
