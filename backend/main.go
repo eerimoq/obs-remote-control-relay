@@ -82,6 +82,7 @@ var address = flag.String("address", ":8080", "HTTP server address")
 var reverseProxyBase = flag.String("reverse_proxy_base", "", "Reverse proxy base (default: \"\")")
 
 var bridges = xsync.NewMapOf[string, *Bridge]()
+var startTime = time.Now()
 var acceptedBridgeControlWebsockets = xsync.NewCounter()
 var acceptedBridgeDataWebsockets = xsync.NewCounter()
 var kickedBridges = xsync.NewCounter()
@@ -279,6 +280,7 @@ func serveStatus(w http.ResponseWriter, r *http.Request) {
 }
 
 type StatsGeneral struct {
+	StartTime         int64 `json:"startTime"`
 	RateLimitExceeded int64 `json:"rateLimitExceeded"`
 }
 
@@ -314,6 +316,7 @@ type Stats struct {
 func serveStatsJson(w http.ResponseWriter, _ *http.Request) {
 	stats := Stats{
 		General: StatsGeneral{
+			StartTime:         startTime.Unix(),
 			RateLimitExceeded: rateLimitExceeded.Value(),
 		},
 		Bridges: StatsBridges{

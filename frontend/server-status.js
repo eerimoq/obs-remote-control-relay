@@ -5,6 +5,7 @@ function appendRow(body, group, name, value) {
 }
 
 function updateStatsGeneral(body, stats) {
+    appendRow(body, "General", "Started", timeAgoString(new Date(stats.general.startTime * 1000)));
     appendRow(body, "General", "Rate limit exceeded", stats.general.rateLimitExceeded);
 }
 
