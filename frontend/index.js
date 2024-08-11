@@ -2,6 +2,9 @@ const relayStatusConnecting = "Connecting...";
 const relayStatusConnected = "Connected";
 const relayStatusKicked = "Kicked";
 
+const obsStatusConnecting = "Connecting...";
+const obsStatusConnected = "Connected";
+
 const connectionStatusConnectingToRelay = "Connecting to Relay...";
 const connectionStatusConnectingToObs = "Connecting to OBS on this computer...";
 const connectionStatusObsClosed = "OBS connection closed";
@@ -185,6 +188,49 @@ class Relay {
     }
 }
 
+class Obs {
+    constructor() {
+        this.websocket = undefined;
+        this.status = obsStatusConnecting;
+        this.timerId = undefined;
+    }
+
+    setStatus(newStatus) {
+        if (this.status == newStatus) {
+            return;
+        }
+        this.status = newStatus;
+        updateObsStatus();
+    }
+
+    setupWebsocket() {
+        this.websocket = new WebSocket(`ws://localhost:${obsPort}`);
+        this.setStatus(obsStatusConnecting);
+        this.websocket.onopen = (event) => {
+            this.setStatus(obsStatusConnected);
+        };
+        this.websocket.onerror = (event) => {
+            this.setStatus(obsStatusConnecting);
+            this.retry(10000)
+        };
+        this.websocket.onclose = (event) => {
+            this.setStatus(obsStatusConnecting);
+            this.retry(10000)
+        };
+    }
+
+    retry(delayMs) {
+        if (this.timerId != undefined) {
+            clearTimeout(this.timerId);
+        }
+        this.timerId = setTimeout(() => {
+            this.timerId = undefined;
+            this.setupWebsocket();
+        }, delayMs);
+    }
+}
+
+let obs = undefined;
 let relay = undefined;
 let connections = [];
 
@@ -224,6 +270,7 @@ function saveObsPort() {
     obsPort = document.getElementById('obsPort').value;
     localStorage.setItem('obsPort', obsPort);
     reset(0);
+    obs.retry(0);
 }
 
 function resetSettings() {
@@ -233,6 +280,7 @@ function resetSettings() {
     localStorage.setItem('obsPort', obsPort);
     populateObsPort();
     reset(0);
+    obs.retry(0);
 }
 
 function updateConnections() {
@@ -272,18 +320,25 @@ function updateStatus() {
 }
 
 function updateRelayStatus() {
-    let statusWithIcon = `<i class="p-icon--spinner u-animation--spin"></i> ${relay.status}`;
-    if (relay.status == relayStatusConnected) {
-        statusWithIcon = `<i class="p-icon--success"></i> ${relay.status}`;
+    let relayStatus = '<i class="p-icon--error"></i> Unknown server status';
+    if (relay.status == relayStatusConnecting) {
+        relayStatus = '<i class="p-icon--spinner u-animation--spin"></i> Connecting to server';
+    } else if (relay.status == relayStatusConnected) {
+        relayStatus = '<i class="p-icon--success"></i> Connected to server';
     } else if (relay.status == relayStatusKicked) {
-        statusWithIcon = `<i class="p-icon--error"></i> ${relay.status}`;
+        relayStatus = '<i class="p-icon--error"></i> Kicked by server';
     }
-    document.getElementById('relayStatus').innerHTML = statusWithIcon;
-    updateRelayStatusTimeAgo();
+    document.getElementById('relayStatus').innerHTML = relayStatus;
 }
 
-function updateRelayStatusTimeAgo() {
-    document.getElementById('relayStatusTimeAgo').innerHTML = `Status changed ${timeAgoString(relay.statusUpdateTime)}.`;
+function updateObsStatus() {
+    let obsStatus = '<i class="p-icon--error"></i> Unknown OBS status';
+    if (obs.status == obsStatusConnecting) {
+        obsStatus = '<i class="p-icon--spinner u-animation--spin"></i> Connecting to OBS on this computer (may take up to a minute)';
+    } else if (obs.status == obsStatusConnected) {
+        obsStatus = '<i class="p-icon--success"></i> Connected to OBS on this computer';
+    }
+    document.getElementById('obsStatus').innerHTML = obsStatus;
 }
 
 function loadbridgeId(urlParams) {
@@ -314,11 +369,13 @@ window.addEventListener('DOMContentLoaded', async (event) => {
     loadObsPort(urlParams);
     relay = new Relay();
     relay.setupControlWebsocket();
+    obs = new Obs();
+    obs.setupWebsocket();
     populateObsPort();
     updateConnections();
     updateRelayStatus();
+    updateObsStatus();
     setInterval(() => {
-        updateRelayStatusTimeAgo();
         for (const connection of connections) {
             connection.updateBitrates();
         }

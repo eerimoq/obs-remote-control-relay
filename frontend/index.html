@@ -17,27 +17,20 @@
       <div class="col-2"></div>
     </div>
 
-    <div class="row">
-      <div class="col-2"></div>
-      <div class="col-8">
-        <div class="p-card">
-          <p class="u-align-text--center">⚠️ DO NOT LEAVE THIS PAGE WHEN USING THE REMOTE CONTROL ⚠️</p>
+    <div class="row" style="padding-bottom:20px">
+      <div class="col-12" style="margin:auto">
+        <div style="display: flex; align-items: center;">
+          <div id="relayStatus" style="padding-right: 10px;"></div>
+          <div id="obsStatus" style="padding-left: 10px;"></div>
         </div>
       </div>
-      <div class="col-2"></div>
     </div>
 
     <div class="row">
       <div class="col-2"></div>
       <div class="col-8">
         <div class="p-card">
-          <h2>About</h2>
-          <p>
-            The OBS Remote Control Relay aims to eliminate the need
-            for port forwarding, public IP address, and VPN when using
-            the OBS remote control to control OBS on your computer at
-            home.
-          </p>
+          <p class="u-align-text--center">⚠️ DO NOT LEAVE THIS PAGE WHEN USING THE REMOTE CONTROL ⚠️</p>
         </div>
       </div>
       <div class="col-2"></div>
@@ -122,9 +115,10 @@
       <div class="col-2"></div>
       <div class="col-8">
         <div class="p-card">
-          <h2>Cloud relay status</h2>
-          <p id="relayStatus"></p>
-          <p id="relayStatusTimeAgo"></p>
+          <h2>Settings</h2>
+          <p>OBS WebSocket Server port</p>
+          <input id="obsPort" type="text" name="obsPort" >
+          <button onclick="saveObsPort()" >Save</button>
         </div>
       </div>
       <div class="col-2"></div>
@@ -134,10 +128,13 @@
       <div class="col-2"></div>
       <div class="col-8">
         <div class="p-card">
-          <h2>Settings</h2>
-          <p>OBS WebSocket Server port</p>
-          <input id="obsPort" type="text" name="obsPort" >
-          <button onclick="saveObsPort()" >Save</button>
+          <h2>About</h2>
+          <p>
+            The OBS Remote Control Relay aims to eliminate the need
+            for port forwarding, public IP address, and VPN when using
+            the OBS remote control to control OBS on your computer at
+            home.
+          </p>
         </div>
       </div>
       <div class="col-2"></div>
