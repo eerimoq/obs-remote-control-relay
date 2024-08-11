@@ -15,7 +15,6 @@ const connectionStatusRemoteControllerError = "Remote controller connection erro
 const connectionStatusRateLimitExceeded = "Rate limit exceeded";
 
 const defaultObsPort = "4455";
-const kickedCode = 3000;
 
 let bridgeId = undefined;
 let obsPort = undefined;
@@ -50,7 +49,7 @@ class Connection {
         if (this.status == newStatus) {
             return;
         }
-        if (this.isAborted()) {
+        if (this.isAborted() && newStatus != connectionStatusRateLimitExceeded) {
             return;
         }
         this.status = newStatus;
@@ -78,11 +77,7 @@ class Connection {
             this.close();
         };
         this.relayDataWebsocket.onclose = (event) => {
-            if (event.code == 3001) {
-               this.setStatus(connectionStatusRateLimitExceeded);
-            } else {
-                this.setStatus(connectionStatusRemoteControllerError);
-            }
+            this.setStatus(connectionStatusRemoteControllerClosed);
             this.close();
         };
         this.relayDataWebsocket.onmessage = async (event) => {
@@ -126,7 +121,6 @@ class Connection {
 class Relay {
     constructor() {
         this.controlWebsocket = undefined;
-        this.statusUpdateTime = new Date();
         this.status = relayStatusConnecting;
         this.statusEnabled = false;
     }
@@ -143,7 +137,6 @@ class Relay {
             return;
         }
         this.status = newStatus;
-        this.statusUpdateTime = new Date();
         updateRelayStatus();
     }
 
@@ -160,12 +153,12 @@ class Relay {
             this.setStatus(relayStatusConnected);
         };
         this.controlWebsocket.onerror = (event) => {
-            reset(10000);
+            if (this.status != relayStatusKicked) {
+                reset(10000);
+            }
         };
         this.controlWebsocket.onclose = (event) => {
-            if (event.code == kickedCode) {
-                this.setStatus(relayStatusKicked);
-            } else {
+            if (this.status != relayStatusKicked) {
                 reset(10000);
             }
         };
@@ -183,6 +176,14 @@ class Relay {
                 this.statusEnabled = true;
             } else if (message.type == "stopStatus") {
                 this.statusEnabled = false;
+            } else if (message.type == "kicked") {
+                this.setStatus(relayStatusKicked);
+            } else if (message.type == "rateLimitExceeded") {
+                for (const connection of connections) {
+                    if (connection.connectionId == message.data.connectionId) {
+                        connection.setStatus(connectionStatusRateLimitExceeded);
+                    }
+                }
             }
         };
     }
