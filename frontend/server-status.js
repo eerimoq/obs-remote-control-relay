@@ -11,6 +11,7 @@ function updateStatsGeneral(body, stats) {
 
 function updateStatsBridges(body, stats) {
     appendRow(body, "Bridges", "Connected", stats.bridges.connected);
+    appendRow(body, "Bridges", "Remote controllers connected", stats.bridges.remoteControllersConnected);
 }
 
 function updateStatsRemoteControllers(body, stats) {

@@ -40,11 +40,12 @@ type Connection struct {
 func (c *Connection) close(code websocket.StatusCode, reason string) {
 	c.mutex.Lock()
 	if c.remoteControllerWebsocket != nil {
-		remoteControllersConnected.Add(-1)
+		remoteControllersConnected.Dec()
 		c.remoteControllerWebsocket.Close(code, reason)
 		c.remoteControllerWebsocket = nil
 	}
 	if c.bridgeWebsocket != nil {
+		bridgeRemoteControllersConnected.Dec()
 		c.bridgeWebsocket.Close(code, reason)
 		c.bridgeWebsocket = nil
 	}
@@ -84,6 +85,7 @@ var reverseProxyBase = flag.String("reverse_proxy_base", "", "Reverse proxy base
 
 var bridges = xsync.NewMapOf[string, *Bridge]()
 var startTime = time.Now()
+var bridgeRemoteControllersConnected = xsync.NewCounter()
 var remoteControllersConnected = xsync.NewCounter()
 var bridgeToRemoteControllerBytes = xsync.NewCounter()
 var remoteControllerToBridgeBytes = xsync.NewCounter()
@@ -138,17 +140,22 @@ func serveBridgeData(w http.ResponseWriter, r *http.Request) {
 	connectionId := r.PathValue("connectionId")
 	bridge, ok := bridges.Load(bridgeId)
 	if !ok {
+		bridgeWebsocket.Close(websocket.StatusGoingAway, "")
 		return
 	}
 	bridge.mutex.Lock()
 	connection := bridge.connections[connectionId]
 	if connection == nil {
 		bridge.mutex.Unlock()
+		bridgeWebsocket.Close(websocket.StatusGoingAway, "")
 		return
 	}
+	connection.mutex.Lock()
 	connection.bridgeWebsocket = bridgeWebsocket
 	rateLimiter := connection.rateLimiter
+	connection.mutex.Unlock()
 	bridge.mutex.Unlock()
+	bridgeRemoteControllersConnected.Inc()
 	code := websocket.StatusGoingAway
 	reason := ""
 	for {
@@ -196,7 +203,7 @@ func serveRemoteController(w http.ResponseWriter, r *http.Request) {
 		remoteControllerWebsocket: remoteControllerWebsocket,
 		rateLimiter:               rateLimiter,
 	}
-	remoteControllersConnected.Add(1)
+	remoteControllersConnected.Inc()
 	bridge.mutex.Lock()
 	bridge.connections[connectionId] = connection
 	wsjson.Write(context, bridge.controlWebsocket, ControlMessage{
@@ -283,7 +290,8 @@ type StatsTrafficDirection struct {
 }
 
 type StatsBridges struct {
-	Connected int `json:"connected"`
+	Connected                  int   `json:"connected"`
+	RemoteControllersConnected int64 `json:"remoteControllersConnected"`
 }
 
 type StatsRemoteControllers struct {
@@ -309,7 +317,8 @@ func serveStatsJson(w http.ResponseWriter, _ *http.Request) {
 			RateLimitExceeded: rateLimitExceeded.Value(),
 		},
 		Bridges: StatsBridges{
-			Connected: bridges.Size(),
+			Connected:                  bridges.Size(),
+			RemoteControllersConnected: bridgeRemoteControllersConnected.Value(),
 		},
 		RemoteControllers: StatsRemoteControllers{
 			Connected: remoteControllersConnected.Value(),
