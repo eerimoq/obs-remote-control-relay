@@ -1,5 +1,7 @@
 # OBS Remote Control Relay
 
+Example server: https://mys-lang.org/obs-remote-control-relay
+
 <img src="screenshot.png">
 
 # Cloud service
