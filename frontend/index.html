@@ -1,28 +1,26 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <meta charset="UTF-8"/>
+    <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>OBS Remote Control Relay</title>
-    <link rel="icon" type="image/x-icon" href="favicon.ico">
+    <title>OBS Remote Control Relay Bridge</title>
+    <link rel="icon" type="image/x-icon" href="favicon.ico" />
     <link rel="stylesheet" href="vanilla-framework-version-4.14.0.min.css" />
   </head>
 
-  <body class="is-dark" style="background:#1a1a1a">
+  <body class="is-dark" style="background: #1a1a1a">
     <div class="row">
       <div class="col-2"></div>
-      <div class="col-8" style="margin:auto">
-        <h1>OBS Remote Control Relay</h1>
+      <div class="col-8" style="margin: auto">
+        <h1>OBS Remote Control Relay Bridge</h1>
       </div>
       <div class="col-2"></div>
     </div>
 
-    <div class="row" style="padding-bottom:20px">
-      <div class="col-12" style="margin:auto">
-        <div style="display: flex; align-items: center;">
-          <div id="relayStatus" style="padding-right: 10px;"></div>
-          <div id="obsStatus" style="padding-left: 10px;"></div>
-        </div>
+    <div class="row" style="padding-bottom: 20px">
+      <div class="col-12" style="margin: auto">
+        <span id="relayStatus" style="padding-right: 10px"></span>
+        <span id="obsStatus" style="padding-left: 10px"></span>
       </div>
     </div>
 
@@ -30,7 +28,9 @@
       <div class="col-2"></div>
       <div class="col-8">
         <div class="p-card">
-          <p class="u-align-text--center">⚠️ DO NOT LEAVE THIS PAGE WHEN USING THE REMOTE CONTROL ⚠️</p>
+          <p class="u-align-text--center">
+            ⚠️ DO NOT LEAVE THIS PAGE WHEN USING THE REMOTE CONTROL ⚠️
+          </p>
         </div>
       </div>
       <div class="col-2"></div>
@@ -42,7 +42,7 @@
         <div class="p-card">
           <h2>Remote controllers</h2>
           <div>
-            <table id="connections" style="table-layout:auto">
+            <table id="connections" style="table-layout: auto">
               <thead>
                 <tr>
                   <th>Status</th>
@@ -71,16 +71,18 @@
           </button>
           Paste it in Settings → Streams → My stream → OBS remote control → URL.
           <h3>OBS Blade</h3>
-          <button onclick="copyObsBladeHostnameRemoteControllerUrlToClipboard()">
+          <button
+            onclick="copyObsBladeHostnameRemoteControllerUrlToClipboard()"
+          >
             <i class="p-icon--copy"></i> Hostname
           </button>
-          Paste it in Aa → Domain → Hostname. Leave wss:// as is. Erase the port.
+          Paste it in Aa → Domain → Hostname. Leave wss:// as is. Erase the
+          port.
           <div class="p-notification--caution is-inline">
             <div class="p-notification__content">
               <p class="p-notification__message">
-                Handle your remote controller configuration same as a
-                password: never share it and don't show it on your
-                stream.
+                Handle your remote controller configuration same as a password:
+                never share it and don't show it on your stream.
               </p>
             </div>
           </div>
@@ -101,8 +103,8 @@
           <div class="p-notification--caution is-inline">
             <div class="p-notification__content">
               <p class="p-notification__message">
-                Handle your status page URL same as a password: never share it and don't 
-                show it on your stream.
+                Handle your status page URL same as a password: never share it
+                and don't show it on your stream.
               </p>
             </div>
           </div>
@@ -117,8 +119,23 @@
         <div class="p-card">
           <h2>Settings</h2>
           <p>OBS WebSocket Server port</p>
-          <input id="obsPort" type="text" name="obsPort" >
-          <button onclick="saveObsPort()" >Save</button>
+          <input type="text" name="obsPort" id="obsPort" />
+          <div class="p-form-password-toggle">
+            <label for="bridgeId">Bridge id</label>
+            <button
+              class="p-button--base u-no-margin--bottom has-icon"
+              aria-live="polite"
+              aria-controls="bridgeId"
+              onclick="toggleShowBridgeId()"
+            >
+              <span id="bridgeIdText" class="p-form-password-toggle__label">
+                Show
+              </span>
+              <i id="bridgeIdIcon" class="p-icon--show"></i>
+            </button>
+          </div>
+          <input type="password" name="bridgeId" id="bridgeId" />
+          <button onclick="saveSettings()">Save</button>
         </div>
       </div>
       <div class="col-2"></div>
@@ -130,10 +147,9 @@
         <div class="p-card">
           <h2>About</h2>
           <p>
-            The OBS Remote Control Relay aims to eliminate the need
-            for port forwarding, public IP address, and VPN when using
-            the OBS remote control to control OBS on your computer at
-            home.
+            The OBS Remote Control Relay aims to eliminate the need for port
+            forwarding, public IP address, and VPN when using the OBS remote
+            control to control OBS on your computer at home.
           </p>
         </div>
       </div>
@@ -141,13 +157,23 @@
     </div>
 
     <div class="u-align--center">
-      <button class="p-button--negative" onclick="resetSettings()" >Reset</button>
+      <button class="p-button--negative" onclick="resetSettings()">
+        Reset
+      </button>
     </div>
 
-    <div class="row" style="padding-bottom:20px">
-      <div class="col-12" style="margin:auto">
-        <a href="server-status.html" target="_blank" style="padding:10px">Server status</a>
-        <a href="https://github.com/eerimoq/obs-remote-control-relay" target="_blank" style="padding:10px">Github</a>
+    <div class="row" style="padding-bottom: 20px">
+      <div class="col-12" style="margin: auto">
+        <a href="server-status.html" target="_blank" style="padding: 10px">
+          Server status
+        </a>
+        <a
+          href="https://github.com/eerimoq/obs-remote-control-relay"
+          target="_blank"
+          style="padding: 10px"
+        >
+          Github
+        </a>
       </div>
     </div>
 

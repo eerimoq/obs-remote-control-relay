@@ -139,6 +139,18 @@ func serveBridgeControl(w http.ResponseWriter, r *http.Request) {
 	bridge.close(false)
 }
 
+func handleRateLimitExceeded(bridgeControlWebsocket *websocket.Conn, connectionId string) {
+	rateLimitExceeded.Inc()
+	wsjson.Write(context.Background(),
+		bridgeControlWebsocket,
+		ControlMessage{
+			Type: controlMessageTypeRateLimitExceeded,
+			Data: ControlRateLimitExceededData{
+				ConnectionId: connectionId,
+			},
+		})
+}
+
 func serveBridgeData(w http.ResponseWriter, r *http.Request) {
 	context := r.Context()
 	bridgeWebsocket, err := websocket.Accept(w, r, nil)
@@ -175,15 +187,7 @@ func serveBridgeData(w http.ResponseWriter, r *http.Request) {
 		length := len(message)
 		bridgeToRemoteControllerBytes.Add(int64(length))
 		if !rateLimiter.AllowN(time.Now(), 8*length) {
-			rateLimitExceeded.Inc()
-			wsjson.Write(context,
-				bridgeControlWebsocket,
-				ControlMessage{
-					Type: controlMessageTypeRateLimitExceeded,
-					Data: ControlRateLimitExceededData{
-						ConnectionId: connectionId,
-					},
-				})
+			handleRateLimitExceeded(bridgeControlWebsocket, connectionId)
 			break
 		}
 		connection.mutex.Lock()
@@ -237,15 +241,7 @@ func serveRemoteController(w http.ResponseWriter, r *http.Request) {
 		length := len(message)
 		remoteControllerToBridgeBytes.Add(int64(length))
 		if !rateLimiter.AllowN(time.Now(), 8*length) {
-			rateLimitExceeded.Inc()
-			wsjson.Write(context,
-				bridgeControlWebsocket,
-				ControlMessage{
-					Type: controlMessageTypeRateLimitExceeded,
-					Data: ControlRateLimitExceededData{
-						ConnectionId: connectionId,
-					},
-				})
+			handleRateLimitExceeded(bridgeControlWebsocket, connectionId)
 			break
 		}
 		connection.mutex.Lock()
