@@ -1,24 +1,43 @@
+
 # OBS Remote Control Relay
 
 Example server: https://moblin.mys-lang.org/obs-remote-control-relay
 
 <img src="screenshot.png">
 
-# Cloud service
+OBS Remote Control Relay provides a simple cloud service with a Go-based backend that serves both a web interface and WebSocket endpoints. This tool enables seamless remote control (like Moblin or OBS Blade ) of OBS through a browser.
 
-A simple Go program serves a simple website and websocket endpoints.
+You can easily run it as a systemd service. TLS support can be provided via Nginx or Caddy.
 
-Run the Go program as a systemd service and use Nginx for TLS.
+---
 
-```
+### 1. Build the Go Program
+
+Clone the repository and navigate to the backend folder to build the Go program:
+
+```bash
 cd backend && go build
 ```
 
-## Systemd service
+### 2. Set Up Environment Variables
 
-/etc/systemd/system/obs-remote-control-relay.service
+Copy the example environment configuration and customize it to fit your setup:
 
-``` ini
+```bash
+cp .env.example .env
+```
+
+Edit the values in `.env` as needed (e.g., port, address, etc.).
+
+### 3. Running as a Systemd Service
+
+You can run the relay as a systemd service for automatic startup on boot.
+
+#### Example Systemd Service Configuration
+
+Create a systemd service file at `/etc/systemd/system/obs-remote-control-relay.service` with the following content:
+
+```ini
 [Unit]
 Description=OBS Remote Control Relay
 After=network.target
@@ -29,43 +48,71 @@ Type=simple
 Restart=always
 RestartSec=1
 User=erik
-ExecStart=/home/erik/obs-remote-control-relay/backend/obs-remote-control-relay -address localhost:9999 -reverse_proxy_base /obs-remote-control-relay
-WorkingDirectory=/home/erik/obs-remote-control-relay/backend
+ExecStart=/home/{$whoami}/obs-remote-control-relay/backend/obs-remote-control-relay -address localhost:9999
+EnvironmentFile=/home/{$whoami}/obs-remote-control-relay/backend/obs-remote-control-relay/.env
+WorkingDirectory=/home/{$whoami}/obs-remote-control-relay/backend
 KillSignal=SIGINT
 
 [Install]
 WantedBy=multi-user.target
 ```
 
-Enable it for automatic start at boot.
+#### Enable and Start the Service
 
-```
+To enable and start the service:
+
+```bash
 sudo systemctl enable obs-remote-control-relay
-```
-
-Start it.
-
-```
 sudo systemctl start obs-remote-control-relay
 ```
 
-## Nginx
+---
+### 4. Set up webserver
 
-```
-location /obs-remote-control-relay/ {
-    proxy_pass http://localhost:9999/;
-    proxy_http_version  1.1;
-    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-    proxy_set_header Upgrade $http_upgrade;
-    proxy_set_header Connection "Upgrade";
-    proxy_set_header Host $host;
-    proxy_send_timeout 7d;
-    proxy_read_timeout 7d;
-}
+## Setting Up TLS with Nginx
+
+You can proxy the Go application behind Nginx for SSL/TLS support and enhanced performance.
+
+1. **Configure Nginx**  
+   Add the following to your Nginx configuration:
+
+   ```nginx
+   location /{$RELAY_PATH}/ {
+       proxy_pass http://localhost:{$PORT}/;
+       proxy_http_version 1.1;
+       proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+       proxy_set_header Upgrade $http_upgrade;
+       proxy_set_header Connection "Upgrade";
+       proxy_set_header Host $host;
+       proxy_send_timeout 7d;
+       proxy_read_timeout 7d;
+   }
+   ```
+
+2. **Use Environment Variables (Optional)**  
+   If you want Nginx to load environment variables, you can specify the `.env` file in the Nginx service or configuration:
+
+   ```nginx
+   EnvironmentFile=/home/{$whoami}/obs-remote-control-relay/backend/obs-remote-control-relay/.env
+   ```
+
+3. **Restart Nginx**  
+   After making changes to the Nginx config, restart it:
+
+   ```bash
+   sudo systemctl restart nginx
+   ```
+
+---
+
+## Setting Up TLS with Caddy
+
+Caddy is another great option for handling TLS with minimal configuration. 
+
+To start Caddy using the `Caddyfile` and environment variables:
+
+```bash
+caddy start --adapter ./Caddyfile --envfile .env
 ```
 
-Restart it.
-
-```
-sudo systemctl restart nginx
-```
+---

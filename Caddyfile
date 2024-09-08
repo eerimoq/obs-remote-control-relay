@@ -1,0 +1,27 @@
+{$RELAY_DOMAIN} {
+    @has_relay_path expression {env.RELAY_PATH} != ""
+
+    handle @has_relay_path {
+		redir /{$RELAY_PATH} /{$RELAY_PATH}/ 301
+        route /{$RELAY_PATH}* {
+            uri strip_prefix /{$RELAY_PATH}
+            reverse_proxy http://localhost:{$RELAY_PORT} {
+                header_up X-Forwarded-For {remote_host}
+                header_up X-Real-IP {remote_host}
+                header_up Host {host}
+                header_up Upgrade {http.request.header.Upgrade}
+                header_up Connection {http.request.header.Connection}
+            }
+        }
+    }
+
+    handle {
+        reverse_proxy http://localhost:{$RELAY_PORT} {
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Real-IP {remote_host}
+            header_up Host {host}
+            header_up Upgrade {http.request.header.Upgrade}
+            header_up Connection {http.request.header.Connection}
+        }
+    }
+}

@@ -1,3 +1,4 @@
+const baseUrl = `${window.location.host}${window.location.pathname}`.replace(/\/$/, '');
 const secure = `${window.location.protocol == "https:" ? "s" : ""}`;
 const wsScheme = `ws${secure}`;
 const httpScheme = `http${secure}`;
