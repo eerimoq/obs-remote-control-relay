@@ -268,20 +268,66 @@ function reset(delayMs) {
   }, delayMs);
 }
 
+function makeMoblinRemoteControllerUrl() {
+  return `${wsScheme}://${baseUrl}/remote-controller/${bridgeId}`;
+}
+
+function makeObsBladeHostnameRemoteControllerUrl() {
+  return `${baseUrl}/remote-controller/${bridgeId}`;
+}
+
 function copyMoblinRemoteControllerUrlToClipboard() {
-  navigator.clipboard.writeText(
-    `${wsScheme}://${baseUrl}/remote-controller/${bridgeId}`
-  );
+  navigator.clipboard.writeText(makeMoblinRemoteControllerUrl());
 }
 
 function copyObsBladeHostnameRemoteControllerUrlToClipboard() {
-  navigator.clipboard.writeText(`${baseUrl}/remote-controller/${bridgeId}`);
+  navigator.clipboard.writeText(makeObsBladeHostnameRemoteControllerUrl());
+}
+
+function makeStatusPageUrl() {
+  return `${httpScheme}://${baseUrl}/status.html?bridgeId=${bridgeId}`;
 }
 
 function copyStatusPageUrlToClipboard() {
-  navigator.clipboard.writeText(
-    `${httpScheme}://${baseUrl}/status.html?bridgeId=${bridgeId}`
-  );
+  navigator.clipboard.writeText(makeStatusPageUrl());
+}
+
+function toggleShow(inputId, iconId) {
+  let input = document.getElementById(inputId);
+  let icon = document.getElementById(iconId);
+  if (input.type === "password") {
+    input.type = "text";
+    icon.classList.add("p-icon--hide");
+    icon.classList.remove("p-icon--show");
+  } else {
+    input.type = "password";
+    icon.classList.add("p-icon--show");
+    icon.classList.remove("p-icon--hide");
+  }
+}
+
+function toggleShowMoblinRemoteControllerMoblinUrl() {
+  toggleShow("moblinUrl", "moblinUrlIcon");
+}
+
+function toggleShowMoblinRemoteControllerObsBladeHostname() {
+  toggleShow("obsBladeHostname", "obsBladeHostnameIcon");
+}
+
+function toggleShowMoblinRemoteControllerObsBladeHost() {
+  toggleShow("obsBladeHost", "obsBladeHostIcon");
+}
+
+function toggleShowStatusPageUrl() {
+  toggleShow("statusPageUrl", "statusPageUrlIcon");
+}
+
+function populateRemoteControllerSetup() {
+  document.getElementById("moblinUrl").value = makeMoblinRemoteControllerUrl();
+  document.getElementById("obsBladeHostname").value =
+    makeObsBladeHostnameRemoteControllerUrl();
+  document.getElementById("obsBladeHost").value =
+    makeMoblinRemoteControllerUrl();
 }
 
 function populateSettings() {
@@ -289,11 +335,17 @@ function populateSettings() {
   document.getElementById("bridgeId").value = bridgeId;
 }
 
+function populateStatusPage() {
+  document.getElementById("statusPageUrl").value = makeStatusPageUrl();
+}
+
 function saveSettings() {
   obsPort = document.getElementById("obsPort").value;
   localStorage.setItem("obsPort", obsPort);
   bridgeId = document.getElementById("bridgeId").value;
   localStorage.setItem("bridgeId", bridgeId);
+  populateRemoteControllerSetup();
+  populateStatusPage();
   reset(0);
   obs.retry(0);
 }
@@ -303,7 +355,9 @@ function resetSettings() {
   localStorage.setItem("bridgeId", bridgeId);
   obsPort = defaultObsPort;
   localStorage.setItem("obsPort", obsPort);
+  populateRemoteControllerSetup();
   populateSettings();
+  populateStatusPage();
   reset(0);
   obs.retry(0);
 }
@@ -416,7 +470,9 @@ window.addEventListener("DOMContentLoaded", async (event) => {
   relay.setupControlWebsocket();
   obs = new Obs();
   obs.setupWebsocket();
+  populateRemoteControllerSetup();
   populateSettings();
+  populateStatusPage();
   updateConnections();
   updateRelayStatus();
   updateObsStatus();
