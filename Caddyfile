@@ -5,7 +5,7 @@
 		redir /{$RELAY_PATH} /{$RELAY_PATH}/ 301
         route /{$RELAY_PATH}* {
             uri strip_prefix /{$RELAY_PATH}
-            reverse_proxy http://localhost:{$RELAY_PORT} {
+            reverse_proxy http://172.31.0.2:{$RELAY_PORT} {
                 header_up X-Forwarded-For {remote_host}
                 header_up X-Real-IP {remote_host}
                 header_up Host {host}
@@ -16,7 +16,7 @@
     }
 
     handle {
-        reverse_proxy http://localhost:{$RELAY_PORT} {
+        reverse_proxy http://172.31.0.2:{$RELAY_PORT} {
             header_up X-Forwarded-For {remote_host}
             header_up X-Real-IP {remote_host}
             header_up Host {host}

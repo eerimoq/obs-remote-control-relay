@@ -1,0 +1,46 @@
+
+services:
+  moblin:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    networks:
+      moblin-network:
+        ipv4_address: 172.31.0.2
+
+  caddy:
+    image: caddy:alpine
+    restart: unless-stopped
+    cap_add:
+      - NET_ADMIN
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      - RELAY_DOMAIN=${RELAY_DOMAIN}
+      - RELAY_PATH=${RELAY_PATH} 
+      - RELAY_PORT=${RELAY_PORT} 
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+      
+    networks:
+      moblin-network:
+        ipv4_address: 172.31.0.3
+
+volumes:
+  caddy_data:
+  caddy_config:
+
+networks:
+  moblin-network:
+   name: moblin-network
+   driver: bridge
+   ipam:
+      config:
+        - subnet: 172.31.0.0/20
+          gateway: 172.31.0.1
+        - subnet: 2001:db8:abc1::/64
+          gateway: 2001:db8:abc1::1

@@ -7,9 +7,28 @@ Example server: https://moblin.mys-lang.org/obs-remote-control-relay
 
 OBS Remote Control Relay provides a simple cloud service with a Go-based backend that serves both a web interface and WebSocket endpoints. This tool enables seamless remote control (like Moblin or OBS Blade ) of OBS through a browser.
 
-You can easily run it as a systemd service. TLS support can be provided via Nginx or Caddy.
+You can easily deploy it using Docker or run it as a systemd service. TLS support can be provided via Nginx or Caddy.
 
----
+
+
+## Quick Start with Docker
+### 1. Set Up Environment Variables
+
+Copy the example environment configuration and customize it to fit your setup:
+
+```bash
+cp .env.example .env
+```
+
+### 2.
+Deploy the OBS Remote Control Relay easily with Docker Compose:
+
+```bash
+docker compose up -d
+```
+
+
+## Manual Way
 
 ### 1. Build the Go Program
 
