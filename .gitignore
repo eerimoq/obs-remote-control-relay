@@ -23,3 +23,4 @@ go.work.sum
 
 # env file
 .env
+backend/obs-remote-control-relay
