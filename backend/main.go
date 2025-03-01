@@ -373,7 +373,7 @@ func updateStats() {
 }
 
 func serveConfigJs(w http.ResponseWriter, _ *http.Request) {
-	configJs := fmt.Sprintf("const baseUrl = `${window.location.host}%v`;", *reverseProxyBase)
+	configJs := fmt.Sprintf("export const baseUrl = `${window.location.host}%v`;", *reverseProxyBase)
 	w.Header().Add("content-type", "text/javascript")
 	w.Write([]byte(configJs))
 }
@@ -395,7 +395,7 @@ func main() {
 	http.HandleFunc("/status/{bridgeId}", func(w http.ResponseWriter, r *http.Request) {
 		serveStatus(w, r)
 	})
-	http.HandleFunc("/config.js", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/config.mjs", func(w http.ResponseWriter, r *http.Request) {
 		serveConfigJs(w, r)
 	})
 	http.HandleFunc("/stats.json", func(w http.ResponseWriter, r *http.Request) {

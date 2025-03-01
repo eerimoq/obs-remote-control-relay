@@ -73,11 +73,11 @@
               class="p-button--base u-no-margin--right"
               aria-live="polite"
               aria-controls="moblinUrl"
-              onclick="toggleShowMoblinRemoteControllerMoblinUrl()"
+              id="toggleShowMoblinRemoteControllerMoblinUrl"
             >
               <i id="moblinUrlIcon" class="p-icon--show"></i>
             </button>
-            <button onclick="copyMoblinRemoteControllerUrlToClipboard()">
+            <button id="copyMoblinRemoteControllerUrlToClipboard">
               Copy
             </button>
           </div>
@@ -93,11 +93,11 @@
               class="p-button--base u-no-margin--right"
               aria-live="polite"
               aria-controls="obsBladeHostname"
-              onclick="toggleShowMoblinRemoteControllerObsBladeHostname()"
+              id="toggleShowMoblinRemoteControllerObsBladeHostname"
             >
               <i id="obsBladeHostnameIcon" class="p-icon--show"></i>
             </button>
-            <button onclick="copyObsBladeHostnameRemoteControllerUrlToClipboard()">
+            <button id="copyObsBladeHostnameRemoteControllerUrlToClipboard">
               Copy
             </button>
           </div>
@@ -112,11 +112,11 @@
               class="p-button--base u-no-margin--right"
               aria-live="polite"
               aria-controls="obsBladeHost"
-              onclick="toggleShowMoblinRemoteControllerObsBladeHost()"
+              id="toggleShowMoblinRemoteControllerObsBladeHost"
             >
               <i id="obsBladeHostIcon" class="p-icon--show"></i>
             </button>
-            <button onclick="copyMoblinRemoteControllerUrlToClipboard()">
+            <button id="copyMoblinRemoteControllerUrlToClipboard">
               Copy
             </button>
           </div>
@@ -149,7 +149,7 @@
               class="p-button--base u-no-margin--bottom has-icon"
               aria-live="polite"
               aria-controls="bridgeId"
-              onclick="toggleShowBridgeId()"
+              id="toggleShowBridgeId"
             >
               <span id="bridgeIdText" class="p-form-password-toggle__label">
                 Show
@@ -158,7 +158,7 @@
             </button>
           </div>
           <input type="password" name="bridgeId" id="bridgeId" />
-          <button onclick="saveSettings()">Save</button>
+          <button id="saveSettings">Save</button>
         </div>
       </div>
       <div class="col-2"></div>
@@ -176,11 +176,11 @@
               class="p-button--base u-no-margin--right"
               aria-live="polite"
               aria-controls="statusPageUrl"
-              onclick="toggleShowStatusPageUrl()"
+              id="toggleShowStatusPageUrl"
             >
               <i id="statusPageUrlIcon" class="p-icon--show"></i>
             </button>
-            <button onclick="copyStatusPageUrlToClipboard()">
+            <button id="copyStatusPageUrlToClipboard">
               Copy
             </button>
           </div>
@@ -214,7 +214,7 @@
     </div>
 
     <div class="u-align--center">
-      <button class="p-button--negative" onclick="resetSettings()">
+      <button class="p-button--negative" id="resetSettings">
         Reset
       </button>
     </div>
@@ -234,8 +234,6 @@
       </div>
     </div>
 
-    <script src="config.js"></script>
-    <script src="utils.js"></script>
-    <script src="index.js"></script>
+    <script src="index.mjs" type="module"></script>
   </body>
 </html>

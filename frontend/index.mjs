@@ -1,3 +1,14 @@
+import {
+  wsScheme,
+  timeAgoString,
+  getTableBody,
+  appendToRow,
+  bitrateToString,
+  httpScheme,
+  addOnClick,
+} from "./utils.mjs";
+import { baseUrl } from "./config.mjs";
+
 const relayStatusConnecting = "Connecting...";
 const relayStatusConnected = "Connected";
 const relayStatusKicked = "Kicked";
@@ -463,6 +474,17 @@ function loadObsPort(urlParams) {
 }
 
 window.addEventListener("DOMContentLoaded", async (event) => {
+  addOnClick('toggleShowMoblinRemoteControllerMoblinUrl', toggleShowMoblinRemoteControllerMoblinUrl);
+  addOnClick('copyMoblinRemoteControllerUrlToClipboard', copyMoblinRemoteControllerUrlToClipboard);
+  addOnClick('toggleShowMoblinRemoteControllerObsBladeHostname', toggleShowMoblinRemoteControllerObsBladeHostname);
+  addOnClick('copyObsBladeHostnameRemoteControllerUrlToClipboard', copyObsBladeHostnameRemoteControllerUrlToClipboard);
+  addOnClick('toggleShowMoblinRemoteControllerObsBladeHost', toggleShowMoblinRemoteControllerObsBladeHost);
+  addOnClick('copyMoblinRemoteControllerUrlToClipboard', copyMoblinRemoteControllerUrlToClipboard);
+  addOnClick('toggleShowBridgeId', toggleShowBridgeId);
+  addOnClick('saveSettings', saveSettings);
+  addOnClick('toggleShowStatusPageUrl', toggleShowStatusPageUrl);
+  addOnClick('copyStatusPageUrlToClipboard', copyStatusPageUrlToClipboard);
+  addOnClick('resetSettings', resetSettings);
   const urlParams = new URLSearchParams(window.location.search);
   loadbridgeId(urlParams);
   loadObsPort(urlParams);
