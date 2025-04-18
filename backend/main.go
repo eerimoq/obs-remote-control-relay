@@ -103,6 +103,12 @@ var rateLimitExceeded = xsync.NewCounter()
 var bridgeToRemoteControllerBitrate atomic.Int64
 var remoteControllerToBridgeBitrate atomic.Int64
 
+var websocketSubprotocols = [1]string{"obswebsocket.json"}
+var websocketAcceptOptions = &websocket.AcceptOptions{
+	Subprotocols:       websocketSubprotocols[:],
+	InsecureSkipVerify: true,
+}
+
 func serveBridgeControl(w http.ResponseWriter, r *http.Request) {
 	context := r.Context()
 	bridgeControlWebsocket, err := websocket.Accept(w, r, nil)
@@ -209,7 +215,7 @@ func serveRemoteController(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	remoteControllerWebsocket, err := websocket.Accept(w, r, nil)
+	remoteControllerWebsocket, err := websocket.Accept(w, r, websocketAcceptOptions)
 	if err != nil {
 		return
 	}
