@@ -8,13 +8,39 @@ Server you can use (hosted in Tokyo): https://moblin.mys-lang.org/obs-remote-con
 
 A simple Go program serves a simple website and websocket endpoints.
 
+## Docker
+
+Pull image from repository:
+```bash
+docker pull ghcr.io/eerimoq/obs-remote-control-relay:latest
+
+docker run --rm -p 8080:8080 ghcr.io/eerimoq/obs-remote-control-relay
+```
+
+### Docker Compose
+
+```yaml
+services:
+  obs-relay:
+    image: ghcr.io/eerimoq/obs-remote-control-relay:latest
+    ports:
+      - "8080:8080"
+    environment:
+      - LOG_LEVEL=INFO
+    restart: unless-stopped
+```
+
+
+## Systemd (no Docker)
+
 Run the Go program as a systemd service and use Nginx for TLS.
 
 ```
 cd backend && go build
 ```
 
-Set the log level with the `LOG_LEVEL` environment variable: `DEBUG`, `INFO` (default), `WARN`, or `ERROR`. Example: `LOG_LEVEL=DEBUG ./obs-remote-control-relay`
+Set the log level with the `LOG_LEVEL` environment variable: `DEBUG`, `INFO` (default), `WARN`, or `ERROR`.\
+Example: `LOG_LEVEL=DEBUG ./obs-remote-control-relay`
 
 ## Systemd service
 
