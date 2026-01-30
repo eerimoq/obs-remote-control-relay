@@ -14,6 +14,8 @@ Run the Go program as a systemd service and use Nginx for TLS.
 cd backend && go build
 ```
 
+Set the log level with the `LOG_LEVEL` environment variable: `DEBUG`, `INFO` (default), `WARN`, or `ERROR`. Example: `LOG_LEVEL=DEBUG ./obs-remote-control-relay`
+
 ## Systemd service
 
 /etc/systemd/system/obs-remote-control-relay.service
