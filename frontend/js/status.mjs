@@ -4,6 +4,7 @@ import {
   getTableBody,
   appendToRow,
   bitrateToString,
+  randomUUID,
 } from "./utils.mjs";
 import { baseUrl } from "./config.mjs";
 
@@ -77,7 +78,7 @@ function updateConnections(connections) {
 function loadbridgeId(urlParams) {
   bridgeId = urlParams.get("bridgeId");
   if (bridgeId == undefined) {
-    bridgeId = crypto.randomUUID();
+    bridgeId = randomUUID();
   }
 }
 

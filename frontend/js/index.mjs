@@ -6,6 +6,7 @@ import {
   bitrateToString,
   httpScheme,
   addOnClick,
+  randomUUID,
 } from "./utils.mjs";
 import { baseUrl } from "./config.mjs";
 
@@ -362,7 +363,7 @@ function saveSettings() {
 }
 
 function resetSettings() {
-  bridgeId = crypto.randomUUID();
+  bridgeId = randomUUID();
   localStorage.setItem("bridgeId", bridgeId);
   obsPort = defaultObsPort;
   localStorage.setItem("obsPort", obsPort);
@@ -457,7 +458,7 @@ function loadbridgeId(urlParams) {
     bridgeId = localStorage.getItem("bridgeId");
   }
   if (bridgeId == undefined) {
-    bridgeId = crypto.randomUUID();
+    bridgeId = randomUUID();
   }
   localStorage.setItem("bridgeId", bridgeId);
 }
