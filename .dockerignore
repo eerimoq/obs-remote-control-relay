@@ -1,0 +1,9 @@
+.git
+.github
+.gitignore
+.dockerignore
+README.md
+LICENSE
+screenshot.png
+backend/obs-remote-control-relay
+*.md
