@@ -434,9 +434,25 @@ func setLogLevel() {
 	logger = slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: level}))
 }
 
+func setVariablesFromEnvironment() {
+	var envAddress = os.Getenv("RELAY_ADDRESS")
+	var envReverseProxyBase = os.Getenv("RELAY_REVERSE_PROXY_BASE")
+
+	if envAddress != "" {
+		address = &envAddress
+	}
+
+	if envReverseProxyBase != "" {
+		reverseProxyBase = &envReverseProxyBase
+	}
+}
+
 func main() {
 	flag.Parse()
+
 	setLogLevel()
+	setVariablesFromEnvironment()
+
 	logger.Info("server starting", "address", *address, "reverse_proxy_base", *reverseProxyBase)
 	go updateStats()
 	static := http.FileServer(http.Dir("../frontend"))

@@ -26,7 +26,9 @@ services:
     ports:
       - "8080:8080"
     environment:
-      - LOG_LEVEL=INFO
+      - LOG_LEVEL=INFO # Default: 'INFO', Possible: INFO, WARN, ERROR, DEBUG
+      # - RELAY_ADDRESS=0.0.0.0:8080 # Default: ':8080', If you change the port here make sure to change the ports section above
+      # - RELAY_REVERSE_PROXY_BASE=/obs-remote-control-relay # Default: '/', Set this according to how you have your reverse proxy
     restart: unless-stopped
 ```
 
@@ -38,9 +40,6 @@ Run the Go program as a systemd service and use Nginx for TLS.
 ```
 cd backend && go build
 ```
-
-Set the log level with the `LOG_LEVEL` environment variable: `DEBUG`, `INFO` (default), `WARN`, or `ERROR`.\
-Example: `LOG_LEVEL=DEBUG ./obs-remote-control-relay`
 
 ## Systemd service
 

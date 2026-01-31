@@ -22,5 +22,4 @@ COPY frontend frontend
 WORKDIR /app/backend
 EXPOSE 8080
 
-ENTRYPOINT ["./relay"]
-CMD ["-address", ":8080"]
+CMD ["./relay"]
