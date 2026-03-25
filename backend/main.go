@@ -11,11 +11,11 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/coder/websocket"
+	"github.com/coder/websocket/wsjson"
 	"github.com/google/uuid"
 	"github.com/puzpuzpuz/xsync/v3"
 	"golang.org/x/time/rate"
-	"github.com/coder/websocket"
-	"github.com/coder/websocket/wsjson"
 )
 
 const version = "0.6.0"
