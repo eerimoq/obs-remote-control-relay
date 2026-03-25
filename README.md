@@ -4,6 +4,14 @@ Server you can use (hosted in Tokyo): https://moblin.mys-lang.org/obs-remote-con
 
 <img src="screenshot.png">
 
+# Development
+
+Build and run.
+
+```
+(cd backend && go run .)
+```
+
 # Cloud service
 
 A simple Go program serves a simple website and websocket endpoints.
@@ -69,3 +77,8 @@ Restart it.
 ```
 sudo systemctl restart nginx
 ```
+
+# Related projects
+
+Moblin remote control relay: https://github.com/eerimoq/moblin-remote-control-relay
+Convenience installer/manager: https://github.com/DanyelAndre/moblin-obs-relay-manager
