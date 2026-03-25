@@ -390,7 +390,7 @@ func serveConfigJs(w http.ResponseWriter, _ *http.Request) {
 func main() {
 	flag.Parse()
 	if *printVersion {
-		fmt.Println("obs-remote-control-relay", version)
+		fmt.Println(version)
 		return
 	}
 	go updateStats()
