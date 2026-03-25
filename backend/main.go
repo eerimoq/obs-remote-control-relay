@@ -14,8 +14,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/puzpuzpuz/xsync/v3"
 	"golang.org/x/time/rate"
-	"nhooyr.io/websocket"
-	"nhooyr.io/websocket/wsjson"
+	"github.com/coder/websocket"
+	"github.com/coder/websocket/wsjson"
 )
 
 const controlMessageTypeConnect = "connect"
