@@ -18,6 +18,8 @@ import (
 	"github.com/coder/websocket/wsjson"
 )
 
+const version = "0.6.0"
+
 const controlMessageTypeConnect = "connect"
 const controlMessageTypeStartStatus = "startStatus"
 const controlMessageTypeStopStatus = "stopStatus"
@@ -92,6 +94,7 @@ func (b *Bridge) close(kicked bool) {
 
 var address = flag.String("address", ":8080", "HTTP server address")
 var reverseProxyBase = flag.String("reverse_proxy_base", "", "Reverse proxy base (default: \"\")")
+var printVersion = flag.Bool("version", false, "Print version and exit")
 
 var bridges = xsync.NewMapOf[string, *Bridge]()
 var startTime = time.Now()
@@ -386,6 +389,10 @@ func serveConfigJs(w http.ResponseWriter, _ *http.Request) {
 
 func main() {
 	flag.Parse()
+	if *printVersion {
+		fmt.Println(version)
+		return
+	}
 	go updateStats()
 	static := http.FileServer(http.Dir("../frontend"))
 	http.Handle("/", static)
